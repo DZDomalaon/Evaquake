@@ -32,5 +32,7 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.1.0'
     implementation 'androidx.cardview:cardview:1.0.0'
     implementation files('libs\\mysql-connector.jar')
-
+    implementation 'com.mapbox.mapboxsdk:mapbox-android-sdk:8.5.0'
+    implementation 'com.mapbox.mapboxsdk:mapbox-android-core:1.3.0'
+    implementation 'com.mapbox.mapboxsdk:mapbox-android-plugin-locationlayer:0.11.0'
 }

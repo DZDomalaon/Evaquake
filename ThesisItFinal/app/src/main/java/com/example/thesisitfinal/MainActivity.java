@@ -1,14 +1,14 @@
 package com.example.thesisitfinal;
 
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
     private Button btn_instructions, btn_map, btn_guide;
@@ -33,8 +33,9 @@ public class MainActivity extends AppCompatActivity {
         btn_map.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent intent = new Intent(view.getContext(), MapActivity.class);
-                view.getContext().startActivity(intent);}
+                Intent intent = new Intent(view.getContext(), map.class);
+                view.getContext().startActivity(intent);
+            }
         });
 
         btn_guide.setOnClickListener(new View.OnClickListener() {
@@ -47,7 +48,8 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void showDialog() {
+    private void showDialog()
+    {
         //before inflating the custom alert dialog layout, we will get the current activity viewgroup
         ViewGroup viewGroup = findViewById(android.R.id.content);
 
@@ -66,5 +68,4 @@ public class MainActivity extends AppCompatActivity {
         alertDialog.show();
 
     }
-
 }
