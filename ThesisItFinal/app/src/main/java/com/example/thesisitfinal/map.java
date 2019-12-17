@@ -38,6 +38,7 @@ public class map extends AppCompatActivity implements
         OnMapReadyCallback, PermissionsListener 
 {
 
+    //evacuationcenter.000webhostapp.com <----- website name
     private PermissionsManager permissionsManager;
     private MapboxMap mapboxMap;
     private MapView mapView;
@@ -51,8 +52,6 @@ public class map extends AppCompatActivity implements
     {
         super.onCreate(savedInstanceState);
 
-        // Mapbox access token is configured here. This needs to be called either in your application
-        // object or in the same activity which contains the mapview.
         Mapbox.getInstance(this, getString(R.string.access_token));
         MapboxNavigation navigation = new MapboxNavigation(this, getString(R.string.access_token));
         // This contains the MapView in XML and needs to be called after the access token is configured.
@@ -171,31 +170,36 @@ public class map extends AppCompatActivity implements
 
     @Override
     @SuppressWarnings( {"MissingPermission"})
-    protected void onStart() {
+    protected void onStart()
+    {
         super.onStart();
         mapView.onStart();
     }
 
     @Override
-    protected void onResume() {
+    protected void onResume()
+    {
         super.onResume();
         mapView.onResume();
     }
 
     @Override
-    protected void onPause() {
+    protected void onPause()
+    {
         super.onPause();
         mapView.onPause();
     }
 
     @Override
-    protected void onStop() {
+    protected void onStop()
+    {
         super.onStop();
         mapView.onStop();
     }
 
     @Override
-    protected void onSaveInstanceState(Bundle outState) {
+    protected void onSaveInstanceState(Bundle outState)
+    {
         super.onSaveInstanceState(outState);
         mapView.onSaveInstanceState(outState);
     }

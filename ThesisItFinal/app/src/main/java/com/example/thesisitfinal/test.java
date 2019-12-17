@@ -1,14 +1,13 @@
 package com.example.thesisitfinal;
 
-import androidx.appcompat.app.AppCompatActivity;
-
-import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -21,7 +20,7 @@ public class test extends AppCompatActivity {
     private static final String user = "root";
     private static final String pass = "root";
     Button btnFetch,btnClear;
-    TextView txtData;
+    public static TextView txtData;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,6 +30,7 @@ public class test extends AppCompatActivity {
         txtData = findViewById(R.id.txtData);
         btnFetch = findViewById(R.id.btnFetch);
         btnClear = findViewById(R.id.btnClear);
+        /*
         btnFetch.setOnClickListener(new View.OnClickListener() {
 
             @Override
@@ -40,10 +40,13 @@ public class test extends AppCompatActivity {
                 connectMySql.execute("");
             }
         });
-        btnClear.setOnClickListener(new View.OnClickListener() {
+        */
+        btnFetch.setOnClickListener(new View.OnClickListener()
+        {
             @Override
             public void onClick(View view) {
-                txtData.setText("");
+                getData list = new getData();
+                list.execute();
             }
         });
     }
