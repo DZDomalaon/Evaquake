@@ -10,11 +10,12 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.mapbox.android.core.permissions.PermissionsListener;
 import com.mapbox.android.core.permissions.PermissionsManager;
+import com.mapbox.api.directions.v5.models.DirectionsResponse;
 import com.mapbox.api.directions.v5.models.DirectionsRoute;
 import com.mapbox.geojson.Feature;
-import com.mapbox.geojson.FeatureCollection;
 import com.mapbox.geojson.Point;
 import com.mapbox.mapboxsdk.Mapbox;
+import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.location.LocationComponent;
 import com.mapbox.mapboxsdk.location.LocationComponentActivationOptions;
 import com.mapbox.mapboxsdk.location.modes.CameraMode;
@@ -27,15 +28,22 @@ import com.mapbox.mapboxsdk.style.layers.PropertyFactory;
 import com.mapbox.mapboxsdk.style.layers.SymbolLayer;
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource;
 import com.mapbox.services.android.navigation.ui.v5.NavigationLauncherOptions;
-import com.mapbox.services.android.navigation.v5.navigation.MapboxNavigation;
+import com.mapbox.services.android.navigation.ui.v5.route.NavigationMapRoute;
+import com.mapbox.services.android.navigation.v5.navigation.NavigationRoute;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import timber.log.Timber;
+
 /**
  * Use the LocationComponent to easily add a device location "puck" to a Mapbox map.
  */
 public class map extends AppCompatActivity implements
-        OnMapReadyCallback, PermissionsListener 
+        OnMapReadyCallback, PermissionsListener, MapboxMap.OnMapClickListener
 {
 
     //evacuationcenter.000webhostapp.com <----- website name
@@ -43,6 +51,8 @@ public class map extends AppCompatActivity implements
     private MapboxMap mapboxMap;
     private MapView mapView;
     private DirectionsRoute currentRoute;
+    private LocationComponent locationComponent;
+    private NavigationMapRoute navigationMapRoute;
 	private static final String MARKER_SOURCE = "markers-source";
     private static final String MARKER_STYLE_LAYER = "markers-style-layer";
     private static final String MARKER_IMAGE = "custom-marker";
@@ -53,8 +63,6 @@ public class map extends AppCompatActivity implements
         super.onCreate(savedInstanceState);
 
         Mapbox.getInstance(this, getString(R.string.access_token));
-        MapboxNavigation navigation = new MapboxNavigation(this, getString(R.string.access_token));
-        // This contains the MapView in XML and needs to be called after the access token is configured.
         setContentView(R.layout.activity_map);
         mapView = findViewById(R.id.mapView);
         mapView.onCreate(savedInstanceState);
@@ -65,16 +73,17 @@ public class map extends AppCompatActivity implements
     public void onMapReady(@NonNull final MapboxMap mapboxMap) 
 	{
         map.this.mapboxMap = mapboxMap;
-        map.this.mapboxMap.setMinZoomPreference(15);
-        mapboxMap.setStyle(new Style.Builder().fromUri("mapbox://styles/mapbox/light-v10"),
+        //map.this.mapboxMap.setMinZoomPreference(15);
+        mapboxMap.addOnMapClickListener(map.this);
+        mapboxMap.setStyle(getString(R.string.navigation_guidance_day),
                 new Style.OnStyleLoaded()
-				{
+                {
                     @Override
                     public void onStyleLoaded(@NonNull Style style)
-					{
-						style.addImage(MARKER_IMAGE, BitmapFactory.decodeResource(
-                        map.this.getResources(), R.drawable.custom_marker));
-						addMarkers(style);
+                    {
+                        style.addImage(MARKER_IMAGE, BitmapFactory.decodeResource(
+                                map.this.getResources(), R.drawable.mapbox_marker_icon_default));
+                        addMarkers(style);
                         enableLocationComponent(style);
                     }
                 });
@@ -88,39 +97,87 @@ public class map extends AppCompatActivity implements
 
         /* Source: A data source specifies the geographic coordinate where the image marker gets placed. */
 
-        loadedMapStyle.addSource(new GeoJsonSource(MARKER_SOURCE, FeatureCollection.fromFeatures(features)));
+        loadedMapStyle.addSource(new GeoJsonSource(MARKER_SOURCE));
 
         /* Style layer: A style layer ties together the source and image and specifies how they are displayed on the map. */
         loadedMapStyle.addLayer(new SymbolLayer(MARKER_STYLE_LAYER, MARKER_SOURCE)
                 .withProperties(
                         PropertyFactory.iconAllowOverlap(true),
                         PropertyFactory.iconIgnorePlacement(true),
-                        PropertyFactory.iconImage(MARKER_IMAGE),
-                        // Adjust the second number of the Float array based on the height of your marker image.
-                        // This is because the bottom of the marker should be anchored to the coordinate point, rather
-                        // than the middle of the marker being the anchor point on the map.
-                        PropertyFactory.iconOffset(new Float[] {0f, -52f})
+                        PropertyFactory.iconImage(MARKER_IMAGE)
                 ));
+    }
+
+
+    @Override
+    public boolean onMapClick(@NonNull LatLng point)
+    {
+        Point destinationPoint = Point.fromLngLat(point.getLongitude(), point.getLatitude());
+        Point originPoint = Point.fromLngLat(locationComponent.getLastKnownLocation().getLongitude(),
+                locationComponent.getLastKnownLocation().getLatitude());
+
+        GeoJsonSource source = mapboxMap.getStyle().getSourceAs(MARKER_SOURCE);
+        if (source != null) {
+            source.setGeoJson(Feature.fromGeometry(destinationPoint));
+
+        }
+        getRoute(originPoint, destinationPoint);
+        return true;
+    }
+
+
+    public void getRoute(Point origin, Point destination)
+    {
+        NavigationRoute.builder(this)
+                .accessToken(getString((R.string.access_token)))
+                .origin(origin)
+                .destination(destination)
+                .build()
+                .getRoute(new Callback<DirectionsResponse>() {
+                    @Override
+                    public void onResponse(Call<DirectionsResponse> call, Response<DirectionsResponse> 
+					response) {
+                        if(response.body() == null)
+                        {
+                            Timber.e("No routes found, make sure you set hte right user and access token");
+                        }
+                        else if (response.body().routes().size() < 1)
+                        {
+                            Timber.e("No routes found");
+                        }
+                        currentRoute = response.body().routes().get(0);
+
+                        if(navigationMapRoute != null)
+                        {
+                            navigationMapRoute.removeRoute();
+                        }
+                        else
+                        {
+                            navigationMapRoute = new NavigationMapRoute(null,mapView,mapboxMap, 
+							R.style.NavigationMapRoute);
+                        }
+
+                        navigationMapRoute.addRoute(currentRoute);
+
+                    }
+
+                    @Override
+                    public void onFailure(Call<DirectionsResponse> call, Throwable t) {
+                        Timber.e("Error: " + t.getMessage());
+                    }
+                });
     }
 
     @SuppressWarnings( {"MissingPermission"})
     private void enableLocationComponent(@NonNull Style loadedMapStyle)
     {
-        // Check if permissions are enabled and if not request
         if (PermissionsManager.areLocationPermissionsGranted(this))
         {
-
-            // Get an instance of the component
-            LocationComponent locationComponent = mapboxMap.getLocationComponent();
-
-            // Activate with options
+            locationComponent = mapboxMap.getLocationComponent();
             locationComponent.activateLocationComponent(
                     LocationComponentActivationOptions.builder(this, loadedMapStyle).build());
-            // Enable to make component visible
             locationComponent.setLocationComponentEnabled(true);
-            // Set the component's camera mode
             locationComponent.setCameraMode(CameraMode.TRACKING);
-            // Set the component's render mode
             locationComponent.setRenderMode(RenderMode.COMPASS);
         } else {
             permissionsManager = new PermissionsManager(this);
