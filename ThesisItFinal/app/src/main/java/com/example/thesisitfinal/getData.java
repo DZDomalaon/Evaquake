@@ -1,9 +1,6 @@
 package com.example.thesisitfinal;
 
 import android.os.AsyncTask;
-import android.os.Build;
-
-import androidx.annotation.RequiresApi;
 
 import com.mapbox.geojson.Feature;
 import com.mapbox.mapboxsdk.geometry.LatLng;
@@ -71,14 +68,5 @@ public class getData extends AsyncTask<Void,Void,Void>
             e.printStackTrace();
         }
         return null;
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.N)
-    @Override
-    protected void onPostExecute(Void aVoid)
-    {
-        super.onPostExecute(aVoid);
-
-        test.txtData.setText(this.parsedData);
     }
 }

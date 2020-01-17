@@ -1,6 +1,7 @@
 package com.example.thesisitfinal;
 
 import android.graphics.BitmapFactory;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -34,6 +35,17 @@ import com.mapbox.services.android.navigation.ui.v5.NavigationLauncherOptions;
 import com.mapbox.services.android.navigation.ui.v5.route.NavigationMapRoute;
 import com.mapbox.services.android.navigation.v5.navigation.NavigationRoute;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -60,6 +72,13 @@ public class map extends AppCompatActivity implements
     private static final String MARKER_STYLE_LAYER = "markers-style-layer";
     private static final String MARKER_IMAGE = "custom-marker";
     private Button button;
+    private URL url;
+    private HttpURLConnection httpURLConnection;
+    private String data;
+    private String lat;
+    private String lon;
+    private LatLng[] locations = new LatLng[50];
+    List<Feature> features = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -80,6 +99,7 @@ public class map extends AppCompatActivity implements
         map.this.mapboxMap = mapboxMap;
         map.this.mapboxMap.setMinZoomPreference(15);
         mapboxMap.addOnMapClickListener(map.this);
+        backgroundExecute();
         mapboxMap.setStyle(getString(R.string.navigation_guidance_day),
                 new Style.OnStyleLoaded()
                 {
@@ -95,7 +115,7 @@ public class map extends AppCompatActivity implements
                         button.setOnClickListener(new View.OnClickListener() {
                             @Override
                             public void onClick(View v) {
-                                boolean simulateRoute = true;
+                                boolean simulateRoute = false;
                                 NavigationLauncherOptions options = NavigationLauncherOptions.builder()
                                         .directionsRoute(currentRoute)
                                         .shouldSimulateRoute(simulateRoute)
@@ -110,9 +130,9 @@ public class map extends AppCompatActivity implements
 	
 	private void addMarkers(@NonNull Style loadedMapStyle) 
 	{
-        List<Feature> features = new ArrayList<>();
-        features.add(Feature.fromGeometry(Point.fromLngLat(125.6348, 7.1149)));
-        features.add(Feature.fromGeometry(Point.fromLngLat(125.605769, 7.064497)));
+        backgroundExecute();
+        //features.add(Feature.fromGeometry(Point.fromLngLat(125.6348, 7.1149)));
+        //features.add(Feature.fromGeometry(Point.fromLngLat(125.605769, 7.064497)));
 
         /* Source: A data source specifies the geographic coordinate where the image marker gets placed. */
 
@@ -283,5 +303,75 @@ public class map extends AppCompatActivity implements
     public void onLowMemory() {
         super.onLowMemory();
         mapView.onLowMemory();
+    }
+
+
+    public void backgroundExecute()
+    {
+        new backgroundTask().execute();
+    }
+
+    class backgroundTask extends AsyncTask<Void, Void, List<Feature>>
+    {
+        @Override
+        protected List<Feature> doInBackground(Void... voids)
+        {
+            try
+            {
+                url = new URL("https://evacuationcenter.000webhostapp.com/getData.php");
+            }
+            catch (MalformedURLException e)
+            {
+                e.printStackTrace();
+            }
+
+            try
+            {
+                httpURLConnection = (HttpURLConnection) url.openConnection();
+            }
+            catch (IOException e)
+            {
+                e.printStackTrace();
+            }
+
+            try
+            {
+                int response_code = httpURLConnection.getResponseCode();
+                if(response_code == HttpURLConnection.HTTP_OK)
+                {
+                    InputStream inputStream = httpURLConnection.getInputStream(); // <--- read the data from the connection
+                    BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream)); // <-- read the data from the stream
+                    String check;
+
+                    while((check = bufferedReader.readLine()) != null)
+                    {
+                        data += check;
+                    }
+                    JSONArray JA = new JSONArray(data);
+                    //evacCenter.add(Feature.fromGeometry(Point.fromLngLat(125.6348, 7.1149)));
+                    //evacCenter.add(Feature.fromGeometry(Point.fromLngLat(125.605769, 7.064497)));
+                    for(int i=0; i<JA.length();i++)
+                    {
+                        JSONObject JO = (JSONObject) JA.get(i);
+                        lat = JO.get("Lat").toString();
+                        lon = JO.get("Lon").toString();
+                        features.add(Feature.fromGeometry(Point.fromLngLat(Double.parseDouble(lat), Double.parseDouble(lon))));
+                    }
+                }
+            }
+            catch (IOException e)
+            {
+                e.printStackTrace();
+            }
+            catch (JSONException e)
+            {
+                e.printStackTrace();
+            }
+            finally
+            {
+                httpURLConnection.disconnect();
+            }
+            return features;
+        }
     }
 }
