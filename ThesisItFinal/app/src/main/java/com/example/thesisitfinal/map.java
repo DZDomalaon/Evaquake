@@ -3,6 +3,7 @@ package com.example.thesisitfinal;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -13,6 +14,7 @@ import com.mapbox.android.core.permissions.PermissionsManager;
 import com.mapbox.api.directions.v5.models.DirectionsResponse;
 import com.mapbox.api.directions.v5.models.DirectionsRoute;
 import com.mapbox.geojson.Feature;
+import com.mapbox.geojson.FeatureCollection;
 import com.mapbox.geojson.Point;
 import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.geometry.LatLng;
@@ -27,6 +29,7 @@ import com.mapbox.mapboxsdk.maps.Style;
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory;
 import com.mapbox.mapboxsdk.style.layers.SymbolLayer;
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource;
+import com.mapbox.services.android.navigation.ui.v5.NavigationLauncher;
 import com.mapbox.services.android.navigation.ui.v5.NavigationLauncherOptions;
 import com.mapbox.services.android.navigation.ui.v5.route.NavigationMapRoute;
 import com.mapbox.services.android.navigation.v5.navigation.NavigationRoute;
@@ -56,6 +59,7 @@ public class map extends AppCompatActivity implements
 	private static final String MARKER_SOURCE = "markers-source";
     private static final String MARKER_STYLE_LAYER = "markers-style-layer";
     private static final String MARKER_IMAGE = "custom-marker";
+    private Button button;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -69,11 +73,12 @@ public class map extends AppCompatActivity implements
         mapView.getMapAsync(this);
     }
 
+    //need change
     @Override
     public void onMapReady(@NonNull final MapboxMap mapboxMap) 
 	{
         map.this.mapboxMap = mapboxMap;
-        //map.this.mapboxMap.setMinZoomPreference(15);
+        map.this.mapboxMap.setMinZoomPreference(15);
         mapboxMap.addOnMapClickListener(map.this);
         mapboxMap.setStyle(getString(R.string.navigation_guidance_day),
                 new Style.OnStyleLoaded()
@@ -85,6 +90,20 @@ public class map extends AppCompatActivity implements
                                 map.this.getResources(), R.drawable.mapbox_marker_icon_default));
                         addMarkers(style);
                         enableLocationComponent(style);
+
+                        button = findViewById(R.id.navButton);
+                        button.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                boolean simulateRoute = true;
+                                NavigationLauncherOptions options = NavigationLauncherOptions.builder()
+                                        .directionsRoute(currentRoute)
+                                        .shouldSimulateRoute(simulateRoute)
+                                        .build();
+                                // Call this method with Context from within an Activity
+                                NavigationLauncher.startNavigation(map.this, options);
+                            }
+                        });
                     }
                 });
     }
@@ -97,7 +116,7 @@ public class map extends AppCompatActivity implements
 
         /* Source: A data source specifies the geographic coordinate where the image marker gets placed. */
 
-        loadedMapStyle.addSource(new GeoJsonSource(MARKER_SOURCE));
+        loadedMapStyle.addSource(new GeoJsonSource(MARKER_SOURCE, FeatureCollection.fromFeatures(features)));
 
         /* Style layer: A style layer ties together the source and image and specifies how they are displayed on the map. */
         loadedMapStyle.addLayer(new SymbolLayer(MARKER_STYLE_LAYER, MARKER_SOURCE)
@@ -109,6 +128,7 @@ public class map extends AppCompatActivity implements
     }
 
 
+    //do not change
     @Override
     public boolean onMapClick(@NonNull LatLng point)
     {
@@ -122,10 +142,13 @@ public class map extends AppCompatActivity implements
 
         }
         getRoute(originPoint, destinationPoint);
+        button.setEnabled(true);
+        button.setBackgroundResource(R.color.mapboxBlue);
+
         return true;
     }
 
-
+    // do not change
     public void getRoute(Point origin, Point destination)
     {
         NavigationRoute.builder(this)
@@ -156,9 +179,7 @@ public class map extends AppCompatActivity implements
                             navigationMapRoute = new NavigationMapRoute(null,mapView,mapboxMap, 
 							R.style.NavigationMapRoute);
                         }
-
                         navigationMapRoute.addRoute(currentRoute);
-
                     }
 
                     @Override
@@ -214,15 +235,6 @@ public class map extends AppCompatActivity implements
             Toast.makeText(getApplicationContext(), "Permission not granted", Toast.LENGTH_LONG).show();
             finish();
         }
-    }
-
-    public void navigationBtnClick(View view)
-    {
-        boolean simulateRoute = true;
-        NavigationLauncherOptions options = NavigationLauncherOptions.builder()
-                .directionsRoute(currentRoute)
-                .shouldSimulateRoute(simulateRoute)
-                .build();
     }
 
     @Override

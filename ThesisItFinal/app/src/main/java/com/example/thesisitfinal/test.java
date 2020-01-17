@@ -2,7 +2,6 @@ package com.example.thesisitfinal;
 
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -41,14 +40,6 @@ public class test extends AppCompatActivity {
             }
         });
         */
-        btnFetch.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(View view) {
-                getData list = new getData();
-                list.execute();
-            }
-        });
     }
 
     private class ConnectMySql extends AsyncTask<String, Void, String> {

@@ -18,7 +18,8 @@
             android:id="@+id/navButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:onClick="navigationBtnClick"
+            android:enabled="false"
+            android:textColor="@color/mapboxWhite"
             android:text="@string/start_navigation" />
     </com.mapbox.mapboxsdk.maps.MapView>
 
