@@ -1,5 +1,7 @@
 package com.example.thesisitfinal;
 
+import android.annotation.SuppressLint;
+import android.app.ProgressDialog;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -48,6 +50,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -74,11 +77,13 @@ public class map extends AppCompatActivity implements
     private Button button;
     private URL url;
     private HttpURLConnection httpURLConnection;
-    private String data;
-    private String lat;
-    private String lon;
-    private LatLng[] locations = new LatLng[50];
+    private String data = "";
+    private Double lat;
+    private Double lon;
+    private String readLine = "";
+    private LatLng[] jsonData = new LatLng[50];
     List<Feature> features = new ArrayList<>();
+    ProgressDialog progressDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -90,6 +95,14 @@ public class map extends AppCompatActivity implements
         mapView = findViewById(R.id.mapView);
         mapView.onCreate(savedInstanceState);
         mapView.getMapAsync(this);
+        backgroundTask BT = new backgroundTask();
+        try {
+            BT.execute().get();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     //need change
@@ -99,43 +112,37 @@ public class map extends AppCompatActivity implements
         map.this.mapboxMap = mapboxMap;
         map.this.mapboxMap.setMinZoomPreference(15);
         mapboxMap.addOnMapClickListener(map.this);
-        backgroundExecute();
         mapboxMap.setStyle(getString(R.string.navigation_guidance_day),
-                new Style.OnStyleLoaded()
+            new Style.OnStyleLoaded()
+            {
+                @Override
+                public void onStyleLoaded(@NonNull Style style)
                 {
-                    @Override
-                    public void onStyleLoaded(@NonNull Style style)
-                    {
-                        style.addImage(MARKER_IMAGE, BitmapFactory.decodeResource(
-                                map.this.getResources(), R.drawable.mapbox_marker_icon_default));
-                        addMarkers(style);
-                        enableLocationComponent(style);
+                    style.addImage(MARKER_IMAGE, BitmapFactory.decodeResource(
+                            map.this.getResources(), R.drawable.mapbox_marker_icon_default));
+                    addMarkers(style);
+                    enableLocationComponent(style);
 
-                        button = findViewById(R.id.navButton);
-                        button.setOnClickListener(new View.OnClickListener() {
-                            @Override
-                            public void onClick(View v) {
-                                boolean simulateRoute = false;
-                                NavigationLauncherOptions options = NavigationLauncherOptions.builder()
-                                        .directionsRoute(currentRoute)
-                                        .shouldSimulateRoute(simulateRoute)
-                                        .build();
-                                // Call this method with Context from within an Activity
-                                NavigationLauncher.startNavigation(map.this, options);
-                            }
-                        });
-                    }
-                });
+                    button = findViewById(R.id.navButton);
+                    button.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            boolean simulateRoute = false;
+                            NavigationLauncherOptions options = NavigationLauncherOptions.builder()
+                                    .directionsRoute(currentRoute)
+                                    .shouldSimulateRoute(simulateRoute)
+                                    .build();
+                            // Call this method with Context from within an Activity
+                            NavigationLauncher.startNavigation(map.this, options);
+                        }
+                    });
+                }
+            });
     }
 	
 	private void addMarkers(@NonNull Style loadedMapStyle) 
 	{
-        backgroundExecute();
-        //features.add(Feature.fromGeometry(Point.fromLngLat(125.6348, 7.1149)));
-        //features.add(Feature.fromGeometry(Point.fromLngLat(125.605769, 7.064497)));
-
         /* Source: A data source specifies the geographic coordinate where the image marker gets placed. */
-
         loadedMapStyle.addSource(new GeoJsonSource(MARKER_SOURCE, FeatureCollection.fromFeatures(features)));
 
         /* Style layer: A style layer ties together the source and image and specifies how they are displayed on the map. */
@@ -294,25 +301,31 @@ public class map extends AppCompatActivity implements
     }
 
     @Override
-    protected void onDestroy() {
+    protected void onDestroy()
+    {
         super.onDestroy();
         mapView.onDestroy();
     }
 
     @Override
-    public void onLowMemory() {
+    public void onLowMemory()
+    {
         super.onLowMemory();
         mapView.onLowMemory();
     }
 
-
-    public void backgroundExecute()
-    {
-        new backgroundTask().execute();
-    }
-
+    @SuppressLint("StaticFieldLeak")
     class backgroundTask extends AsyncTask<Void, Void, List<Feature>>
     {
+        @Override
+        protected void onPreExecute()
+        {
+            progressDialog = new ProgressDialog(map.this);
+            progressDialog.setMessage("Please Wait");
+            progressDialog.setCancelable(false);
+            progressDialog.show();
+        }
+
         @Override
         protected List<Feature> doInBackground(Void... voids)
         {
@@ -328,6 +341,10 @@ public class map extends AppCompatActivity implements
             try
             {
                 httpURLConnection = (HttpURLConnection) url.openConnection();
+                httpURLConnection.setRequestMethod("GET");
+                httpURLConnection.setReadTimeout(15000);
+                httpURLConnection.setConnectTimeout(15000);
+                httpURLConnection.connect();
             }
             catch (IOException e)
             {
@@ -336,42 +353,52 @@ public class map extends AppCompatActivity implements
 
             try
             {
-                int response_code = httpURLConnection.getResponseCode();
-                if(response_code == HttpURLConnection.HTTP_OK)
-                {
-                    InputStream inputStream = httpURLConnection.getInputStream(); // <--- read the data from the connection
-                    BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream)); // <-- read the data from the stream
-                    String check;
+                InputStream inputStream = httpURLConnection.getInputStream(); // <--- read the data from the connection
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream)); // <-- read the data from the stream
+                StringBuilder stringBuilder = new StringBuilder();
 
-                    while((check = bufferedReader.readLine()) != null)
-                    {
-                        data += check;
-                    }
+                while ((readLine = bufferedReader.readLine()) != null)
+                {
+                    stringBuilder.append(readLine);
+                }
+                inputStream.close();
+                bufferedReader.close();
+
+                data = stringBuilder.toString();
+
+                try
+                {
                     JSONArray JA = new JSONArray(data);
-                    //evacCenter.add(Feature.fromGeometry(Point.fromLngLat(125.6348, 7.1149)));
-                    //evacCenter.add(Feature.fromGeometry(Point.fromLngLat(125.605769, 7.064497)));
-                    for(int i=0; i<JA.length();i++)
+
+                    //features.add(Feature.fromGeometry(Point.fromLngLat(125.605769, 7.064497)));
+
+                    for (int i = 0; i < JA.length(); i++)
                     {
-                        JSONObject JO = (JSONObject) JA.get(i);
-                        lat = JO.get("Lat").toString();
-                        lon = JO.get("Lon").toString();
-                        features.add(Feature.fromGeometry(Point.fromLngLat(Double.parseDouble(lat), Double.parseDouble(lon))));
+                        JSONObject JO = JA.getJSONObject(i);
+                        lat = Double.parseDouble(JO.getString("Lat"));
+                        lon = Double.parseDouble(JO.getString("Lon"));
+                        features.add(Feature.fromGeometry(Point.fromLngLat(lon, lat)));
                     }
                 }
-            }
-            catch (IOException e)
-            {
+                catch (JSONException e)
+                {
+                    e.printStackTrace();
+                }
+
+
+            } catch (IOException e) {
                 e.printStackTrace();
-            }
-            catch (JSONException e)
-            {
-                e.printStackTrace();
-            }
-            finally
-            {
+            } finally {
                 httpURLConnection.disconnect();
             }
             return features;
+        }
+
+        @Override
+        protected void onPostExecute(List<Feature> features)
+        {
+            progressDialog.dismiss();
+            super.onPostExecute(features);
         }
     }
 }

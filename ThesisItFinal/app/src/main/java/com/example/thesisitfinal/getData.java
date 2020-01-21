@@ -3,6 +3,7 @@ package com.example.thesisitfinal;
 import android.os.AsyncTask;
 
 import com.mapbox.geojson.Feature;
+import com.mapbox.geojson.Point;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 
 import org.json.JSONArray;
@@ -18,6 +19,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+
+import static com.example.thesisitfinal.test.txtData;
 
 public class getData extends AsyncTask<Void,Void,Void>
 {
@@ -52,11 +55,13 @@ public class getData extends AsyncTask<Void,Void,Void>
                 lat = JO.get("Lat").toString();
                 lon = JO.get("Lon").toString();
                 locations[i] = new LatLng(Double.parseDouble(lat), Double.parseDouble(lon));
-                //evacCenter.add(Feature.fromGeometry(Point.fromLngLat(Double.parseDouble(lon), Double.parseDouble(lat))));
+                evacCenter.add(Feature.fromGeometry(Point.fromLngLat(125.605769, 7.064497)));
+                evacCenter.add(Feature.fromGeometry(Point.fromLngLat(Double.parseDouble(lon), Double.parseDouble(lat))));
                 //parsedData += locations[i];
-            }
-            parsedData += locations[0].toString();
 
+            }
+            //parsedData += locations[0].toString();
+            parsedData += evacCenter.size();
 
 
         // TODO Auto-generated catch block
@@ -68,5 +73,10 @@ public class getData extends AsyncTask<Void,Void,Void>
             e.printStackTrace();
         }
         return null;
+    }
+
+    @Override
+    protected void onPostExecute(Void aVoid) {
+        txtData.setText(parsedData);
     }
 }

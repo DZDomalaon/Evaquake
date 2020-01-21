@@ -2,6 +2,7 @@ package com.example.thesisitfinal;
 
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -29,17 +30,18 @@ public class test extends AppCompatActivity {
         txtData = findViewById(R.id.txtData);
         btnFetch = findViewById(R.id.btnFetch);
         btnClear = findViewById(R.id.btnClear);
-        /*
+
         btnFetch.setOnClickListener(new View.OnClickListener() {
 
             @Override
             public void onClick(View v) {
                 // TODO Auto-generated method stub
-                ConnectMySql connectMySql = new ConnectMySql();
-                connectMySql.execute("");
+                getData get = new getData();
+                get.execute();
             }
         });
-        */
+
+
     }
 
     private class ConnectMySql extends AsyncTask<String, Void, String> {
