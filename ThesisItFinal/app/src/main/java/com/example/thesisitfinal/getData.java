@@ -2,8 +2,6 @@ package com.example.thesisitfinal;
 
 import android.os.AsyncTask;
 
-import com.mapbox.geojson.Feature;
-import com.mapbox.geojson.Point;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 
 import org.json.JSONArray;
@@ -17,66 +15,73 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
 
 import static com.example.thesisitfinal.test.txtData;
 
-public class getData extends AsyncTask<Void,Void,Void>
+
+class getData extends AsyncTask<Void, Void, LatLng[]>
 {
-    String data = "";
-    String lat = "";
-    String lon = "";
-    String parsedData = "";
-    List<Feature> evacCenter = new ArrayList<>();
-    private static final LatLng[] locations = new LatLng[50];
+    URL url;
+    String readLine;
+    String data;
+    HttpURLConnection httpURLConnection;
+    LatLng[] locations = new LatLng[50];
+    Double lat;
+    Double lon;
+
     @Override
-    protected Void doInBackground(Void... voids)
-    {
+    protected LatLng[] doInBackground(Void... voids) {
         try {
-            URL url = new URL("https://evacuationcenter.000webhostapp.com/getData.php");
-            HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
-            InputStream inputStream = httpURLConnection.getInputStream(); // <--- read the data from the connection
-            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream)); // <-- read the data from the stream
-
-            String check = ""; // <--- variable for checking the bufferedReader
-            while (check != null)
-            {
-                check = bufferedReader.readLine();
-                data += check;
-            }
-
-            JSONArray JA = new JSONArray(data);
-            //evacCenter.add(Feature.fromGeometry(Point.fromLngLat(125.6348, 7.1149)));
-            //evacCenter.add(Feature.fromGeometry(Point.fromLngLat(125.605769, 7.064497)));
-            for(int i=0; i<JA.length();i++)
-            {
-                JSONObject JO = (JSONObject) JA.get(i);
-                lat = JO.get("Lat").toString();
-                lon = JO.get("Lon").toString();
-                locations[i] = new LatLng(Double.parseDouble(lat), Double.parseDouble(lon));
-                evacCenter.add(Feature.fromGeometry(Point.fromLngLat(125.605769, 7.064497)));
-                evacCenter.add(Feature.fromGeometry(Point.fromLngLat(Double.parseDouble(lon), Double.parseDouble(lat))));
-                //parsedData += locations[i];
-
-            }
-            //parsedData += locations[0].toString();
-            parsedData += evacCenter.size();
-
-
-        // TODO Auto-generated catch block
+            url = new URL("https://evacuationcenter.000webhostapp.com/getData.php");
         } catch (MalformedURLException e) {
             e.printStackTrace();
+        }
+        try {
+
+            httpURLConnection = (HttpURLConnection) url.openConnection();
+            httpURLConnection.setRequestMethod("GET");
+            httpURLConnection.setReadTimeout(15000);
+            httpURLConnection.setConnectTimeout(15000);
+            httpURLConnection.connect();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            InputStream inputStream = httpURLConnection.getInputStream(); // <--- read the data from the connection
+            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream)); // <-- read the data from the stream
+            StringBuilder stringBuilder = new StringBuilder();
+
+            while ((readLine = bufferedReader.readLine()) != null) {
+                stringBuilder.append(readLine);
+            }
+            inputStream.close();
+            bufferedReader.close();
+
+            data = stringBuilder.toString();
+
+            JSONArray JA = new JSONArray(data);
+
+            //features.add(Feature.fromGeometry(Point.fromLngLat(125.605769, 7.064497)));
+
+            for (int i = 0; i < JA.length(); i++) {
+                JSONObject JO = JA.getJSONObject(i);
+                lat = Double.parseDouble(JO.getString("Lat"));
+                lon = Double.parseDouble(JO.getString("Lon"));
+                locations[i] = new LatLng(lat, lon);
+                //features.add(Feature.fromGeometry(Point.fromLngLat(lon, lat)));
+            }
         } catch (IOException e) {
             e.printStackTrace();
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        return null;
+        return locations;
     }
 
     @Override
-    protected void onPostExecute(Void aVoid) {
-        txtData.setText(parsedData);
+    protected void onPostExecute(LatLng[] l)
+    {
+        txtData.setText(l[0].toString());
     }
 }
