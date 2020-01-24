@@ -327,14 +327,10 @@ public class map extends AppCompatActivity implements
         }
 
         @Override
-        protected List<Feature> doInBackground(Void... voids)
-        {
-            try
-            {
+        protected List<Feature> doInBackground(Void... voids) {
+            try {
                 url = new URL("https://evacuationcenter.000webhostapp.com/getData.php");
-            }
-            catch (MalformedURLException e)
-            {
+            } catch (MalformedURLException e) {
                 e.printStackTrace();
             }
 
@@ -345,20 +341,16 @@ public class map extends AppCompatActivity implements
                 httpURLConnection.setReadTimeout(15000);
                 httpURLConnection.setConnectTimeout(15000);
                 httpURLConnection.connect();
-            }
-            catch (IOException e)
-            {
+            } catch (IOException e) {
                 e.printStackTrace();
             }
 
-            try
-            {
+            try {
                 InputStream inputStream = httpURLConnection.getInputStream(); // <--- read the data from the connection
                 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream)); // <-- read the data from the stream
                 StringBuilder stringBuilder = new StringBuilder();
 
-                while ((readLine = bufferedReader.readLine()) != null)
-                {
+                while ((readLine = bufferedReader.readLine()) != null) {
                     stringBuilder.append(readLine);
                 }
                 inputStream.close();
@@ -366,22 +358,18 @@ public class map extends AppCompatActivity implements
 
                 data = stringBuilder.toString();
 
-                try
-                {
+                try {
                     JSONArray JA = new JSONArray(data);
 
                     //features.add(Feature.fromGeometry(Point.fromLngLat(125.605769, 7.064497)));
 
-                    for (int i = 0; i < JA.length(); i++)
-                    {
+                    for (int i = 0; i < JA.length(); i++) {
                         JSONObject JO = JA.getJSONObject(i);
                         lat = Double.parseDouble(JO.getString("Lat"));
                         lon = Double.parseDouble(JO.getString("Lon"));
                         features.add(Feature.fromGeometry(Point.fromLngLat(lon, lat)));
                     }
-                }
-                catch (JSONException e)
-                {
+                } catch (JSONException e) {
                     e.printStackTrace();
                 }
 
