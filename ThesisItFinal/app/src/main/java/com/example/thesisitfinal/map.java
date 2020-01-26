@@ -3,21 +3,33 @@ package com.example.thesisitfinal;
 import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
+import androidx.recyclerview.widget.DefaultItemAnimator;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.LinearSnapHelper;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.mapbox.android.core.permissions.PermissionsListener;
 import com.mapbox.android.core.permissions.PermissionsManager;
+import com.mapbox.api.directions.v5.DirectionsCriteria;
+import com.mapbox.api.directions.v5.MapboxDirections;
 import com.mapbox.api.directions.v5.models.DirectionsResponse;
 import com.mapbox.api.directions.v5.models.DirectionsRoute;
 import com.mapbox.geojson.Feature;
 import com.mapbox.geojson.FeatureCollection;
+import com.mapbox.geojson.LineString;
 import com.mapbox.geojson.Point;
 import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.geometry.LatLng;
@@ -29,13 +41,12 @@ import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.mapboxsdk.maps.Style;
-import com.mapbox.mapboxsdk.style.layers.PropertyFactory;
+import com.mapbox.mapboxsdk.style.layers.LineLayer;
 import com.mapbox.mapboxsdk.style.layers.SymbolLayer;
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource;
 import com.mapbox.services.android.navigation.ui.v5.NavigationLauncher;
 import com.mapbox.services.android.navigation.ui.v5.NavigationLauncherOptions;
 import com.mapbox.services.android.navigation.ui.v5.route.NavigationMapRoute;
-import com.mapbox.services.android.navigation.v5.navigation.NavigationRoute;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -45,11 +56,13 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 import retrofit2.Call;
@@ -57,11 +70,21 @@ import retrofit2.Callback;
 import retrofit2.Response;
 import timber.log.Timber;
 
+import static com.mapbox.core.constants.Constants.PRECISION_6;
+import static com.mapbox.mapboxsdk.style.layers.Property.LINE_JOIN_ROUND;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.iconAllowOverlap;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.iconIgnorePlacement;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.iconImage;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.iconSize;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.lineColor;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.lineJoin;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.lineWidth;
+
 /**
  * Use the LocationComponent to easily add a device location "puck" to a Mapbox map.
  */
 public class map extends AppCompatActivity implements
-        OnMapReadyCallback, PermissionsListener, MapboxMap.OnMapClickListener
+        OnMapReadyCallback, PermissionsListener
 {
 
     //evacuationcenter.000webhostapp.com <----- website name
@@ -71,9 +94,14 @@ public class map extends AppCompatActivity implements
     private DirectionsRoute currentRoute;
     private LocationComponent locationComponent;
     private NavigationMapRoute navigationMapRoute;
-	private static final String MARKER_SOURCE = "markers-source";
+    private static final String MARKER_SOURCE = "markers-source";
     private static final String MARKER_STYLE_LAYER = "markers-style-layer";
     private static final String MARKER_IMAGE = "custom-marker";
+    private static final String PERSON_ICON_ID = "PERSON_ICON_ID";
+    private static final String PERSON_SOURCE_ID = "PERSON_SOURCE_ID";
+    private static final String PERSON_LAYER_ID = "PERSON_LAYER_ID";
+    private static final String DASHED_DIRECTIONS_LINE_LAYER_SOURCE_ID = "DASHED_DIRECTIONS_LINE_LAYER_SOURCE_ID";
+    private static final String DASHED_DIRECTIONS_LINE_LAYER_ID = "DASHED_DIRECTIONS_LINE_LAYER_ID";
     private Button button;
     private URL url;
     private HttpURLConnection httpURLConnection;
@@ -81,9 +109,14 @@ public class map extends AppCompatActivity implements
     private Double lat;
     private Double lon;
     private String readLine = "";
-    private LatLng[] jsonData = new LatLng[50];
+    private LatLng[] possibleLocations;
+    public static String[] evacNames;
+    private Point originPoint;
+    private JSONArray JA;
     List<Feature> features = new ArrayList<>();
     ProgressDialog progressDialog;
+    private FeatureCollection dashedFeatureCollection;;
+    List<DirectionsRoute> directionsRouteList = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -107,113 +140,305 @@ public class map extends AppCompatActivity implements
 
     //need change
     @Override
-    public void onMapReady(@NonNull final MapboxMap mapboxMap) 
-	{
+    public void onMapReady(@NonNull final MapboxMap mapboxMap)
+    {
         map.this.mapboxMap = mapboxMap;
         map.this.mapboxMap.setMinZoomPreference(15);
-        mapboxMap.addOnMapClickListener(map.this);
         mapboxMap.setStyle(getString(R.string.navigation_guidance_day),
-            new Style.OnStyleLoaded()
-            {
-                @Override
-                public void onStyleLoaded(@NonNull Style style)
+                new Style.OnStyleLoaded()
                 {
-                    style.addImage(MARKER_IMAGE, BitmapFactory.decodeResource(
-                            map.this.getResources(), R.drawable.mapbox_marker_icon_default));
-                    addMarkers(style);
-                    enableLocationComponent(style);
+                    @Override
+                    public void onStyleLoaded(@NonNull Style style)
+                    {
+                        enableLocationComponent(style);
+                        originPoint = Point.fromLngLat(locationComponent.getLastKnownLocation().getLongitude(),
+                                locationComponent.getLastKnownLocation().getLatitude());
+                        initDestinationLocation();
+                        initDestinationName();
+                        initDestinationFeatureCollection();
+                        getRoutesToAllPoints();
+                        initRecyclerView();
 
-                    button = findViewById(R.id.navButton);
-                    button.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            boolean simulateRoute = false;
-                            NavigationLauncherOptions options = NavigationLauncherOptions.builder()
-                                    .directionsRoute(currentRoute)
-                                    .shouldSimulateRoute(simulateRoute)
-                                    .build();
-                            // Call this method with Context from within an Activity
-                            NavigationLauncher.startNavigation(map.this, options);
-                        }
-                    });
-                }
-            });
-    }
-	
-	private void addMarkers(@NonNull Style loadedMapStyle) 
-	{
-        /* Source: A data source specifies the geographic coordinate where the image marker gets placed. */
-        loadedMapStyle.addSource(new GeoJsonSource(MARKER_SOURCE, FeatureCollection.fromFeatures(features)));
+                        originPoint = Point.fromLngLat(locationComponent.getLastKnownLocation().getLongitude(),
+                                locationComponent.getLastKnownLocation().getLatitude());
+                        style.addImage(MARKER_IMAGE, BitmapFactory.decodeResource(
+                                map.this.getResources(), R.drawable.mapbox_marker_icon_default));
+                        style.addSource(new GeoJsonSource(MARKER_SOURCE, initDestinationFeatureCollection()));
+                        style.addLayer(new SymbolLayer(MARKER_STYLE_LAYER, MARKER_SOURCE).withProperties(
+                                iconImage(MARKER_IMAGE),
+                                iconAllowOverlap(true),
+                                iconIgnorePlacement(true)));
 
-        /* Style layer: A style layer ties together the source and image and specifies how they are displayed on the map. */
-        loadedMapStyle.addLayer(new SymbolLayer(MARKER_STYLE_LAYER, MARKER_SOURCE)
-                .withProperties(
-                        PropertyFactory.iconAllowOverlap(true),
-                        PropertyFactory.iconIgnorePlacement(true),
-                        PropertyFactory.iconImage(MARKER_IMAGE)
-                ));
+                        style.addSource(new GeoJsonSource(PERSON_SOURCE_ID, Feature.fromGeometry(originPoint)));
+                        style.addLayer(new SymbolLayer(PERSON_LAYER_ID, PERSON_SOURCE_ID).withProperties(
+                                iconImage(PERSON_ICON_ID),
+                                iconSize(2f),
+                                iconAllowOverlap(true),
+                                iconIgnorePlacement(true)));
+
+                        style.addSource(new GeoJsonSource(DASHED_DIRECTIONS_LINE_LAYER_SOURCE_ID));
+                        style.addLayerBelow(new LineLayer(DASHED_DIRECTIONS_LINE_LAYER_ID, DASHED_DIRECTIONS_LINE_LAYER_SOURCE_ID)
+                                .withProperties(
+                                        lineWidth(7f),
+                                        lineJoin(LINE_JOIN_ROUND),
+                                        lineColor(Color.parseColor("#2096F3"))
+                                ), PERSON_LAYER_ID);
+
+                        button = findViewById(R.id.navButton);
+                        button.setOnClickListener(new View.OnClickListener()
+                        {
+                            @Override
+                            public void onClick(View v) {
+                                boolean simulateRoute = false;
+                                NavigationLauncherOptions options = NavigationLauncherOptions.builder()
+                                        .directionsRoute(currentRoute)
+                                        .shouldSimulateRoute(simulateRoute)
+                                        .build();
+                                // Call this method with Context from within an Activity
+                                NavigationLauncher.startNavigation(map.this, options);
+                            }
+                        });
+                    }
+                });
     }
 
 
     //do not change
-    @Override
-    public boolean onMapClick(@NonNull LatLng point)
+    public void getRoutesToAllPoints()
     {
-        Point destinationPoint = Point.fromLngLat(point.getLongitude(), point.getLatitude());
-        Point originPoint = Point.fromLngLat(locationComponent.getLastKnownLocation().getLongitude(),
-                locationComponent.getLastKnownLocation().getLatitude());
-
-        GeoJsonSource source = mapboxMap.getStyle().getSourceAs(MARKER_SOURCE);
-        if (source != null) {
-            source.setGeoJson(Feature.fromGeometry(destinationPoint));
-
+        for(LatLng point: possibleLocations)
+        {
+            getRoute(Point.fromLngLat(point.getLongitude(), point.getLatitude()));
         }
-        getRoute(originPoint, destinationPoint);
-        button.setEnabled(true);
-        button.setBackgroundResource(R.color.mapboxBlue);
-
-        return true;
     }
 
     // do not change
-    public void getRoute(Point origin, Point destination)
+    public void getRoute(Point destination)
     {
-        NavigationRoute.builder(this)
-                .accessToken(getString((R.string.access_token)))
-                .origin(origin)
+        MapboxDirections client = MapboxDirections.builder()
+                .origin(originPoint)
                 .destination(destination)
-                .build()
-                .getRoute(new Callback<DirectionsResponse>() {
-                    @Override
-                    public void onResponse(Call<DirectionsResponse> call, Response<DirectionsResponse> 
-					response) {
-                        if(response.body() == null)
-                        {
-                            Timber.e("No routes found, make sure you set hte right user and access token");
-                        }
-                        else if (response.body().routes().size() < 1)
-                        {
-                            Timber.e("No routes found");
-                        }
-                        currentRoute = response.body().routes().get(0);
+                .overview(DirectionsCriteria.OVERVIEW_FULL)
+                .profile(DirectionsCriteria.PROFILE_DRIVING)
+                .accessToken(getString((R.string.access_token)))
+                .build();
+        client.enqueueCall(new Callback<DirectionsResponse>() {
+            @Override
+            public void onResponse(Call<DirectionsResponse> call, Response<DirectionsResponse> response) {
+                if (response.body() == null) {
+                    Timber.e("No routes found, make sure you set hte right user and access token");
+                } else if (response.body().routes().size() < 1) {
+                    Timber.e("No routes found");
+                }
+                directionsRouteList.add(response.body().routes().get(0));
+            }
 
-                        if(navigationMapRoute != null)
-                        {
-                            navigationMapRoute.removeRoute();
-                        }
-                        else
-                        {
-                            navigationMapRoute = new NavigationMapRoute(null,mapView,mapboxMap, 
-							R.style.NavigationMapRoute);
-                        }
-                        navigationMapRoute.addRoute(currentRoute);
-                    }
+            @Override
+            public void onFailure(Call<DirectionsResponse> call, Throwable t)
+            {
+                Timber.e("Error: " + t.getMessage());
+            }
+        });
+    }
 
-                    @Override
-                    public void onFailure(Call<DirectionsResponse> call, Throwable t) {
-                        Timber.e("Error: " + t.getMessage());
+    public void initDestinationLocation()
+    {
+        try
+        {
+            JSONArray JA = new JSONArray(data);
+            possibleLocations = new LatLng[JA.length()];
+            evacNames = new String[JA.length()];
+            //features.add(Feature.fromGeometry(Point.fromLngLat(125.605769, 7.064497)));
+
+            for (int i = 0; i < JA.length(); i++)
+            {
+                JSONObject JO = JA.getJSONObject(i);
+                lat = Double.parseDouble(JO.getString("Lat"));
+                lon = Double.parseDouble(JO.getString("Lon"));
+                possibleLocations[i] = new LatLng(lat,lon);
+            }
+        }
+        catch (JSONException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    private void initDestinationName()
+    {
+        try
+        {
+            JSONArray JA = new JSONArray(data);
+            evacNames = new String[JA.length()];
+
+            for (int i = 0; i < JA.length(); i++)
+            {
+                JSONObject JO = JA.getJSONObject(i);
+                evacNames[i] = JO.getString("locationName");
+            }
+        }
+        catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    private FeatureCollection initDestinationFeatureCollection()
+    {
+        try
+        {
+            JSONArray JA = new JSONArray(data);
+            for (int i = 0; i < JA.length(); i++)
+            {
+                JSONObject JO = JA.getJSONObject(i);
+                lat = Double.parseDouble(JO.getString("Lat"));
+                lon = Double.parseDouble(JO.getString("Lon"));
+                features.add(Feature.fromGeometry(Point.fromLngLat(lon, lat)));
+                //Toast.makeText(this, "" + Feature.fromGeometry(Point.fromLngLat(lon, lat)).toString(), Toast.LENGTH_SHORT).show();
+            }
+        }
+        catch (JSONException e)
+        {
+            e.printStackTrace();
+        }
+        catch (Exception e) {}
+        return FeatureCollection.fromFeatures(features);
+    }
+
+    private void drawPolyline(final DirectionsRoute route)
+    {
+        if (mapboxMap != null) {
+            mapboxMap.getStyle(new Style.OnStyleLoaded() {
+                @Override
+                public void onStyleLoaded(@NonNull Style style)
+                {
+                    List<Feature> directionsRouteFeatureList = new ArrayList<>();
+                    LineString lineString = LineString.fromPolyline(Objects.requireNonNull(route.geometry()), PRECISION_6);
+                    List<Point> lineStringCoordinates = lineString.coordinates();
+                    for (int i = 0; i < lineStringCoordinates.size(); i++) {
+                        directionsRouteFeatureList.add(Feature.fromGeometry(
+                                LineString.fromLngLats(lineStringCoordinates)));
                     }
-                });
+                    dashedFeatureCollection = FeatureCollection.fromFeatures(directionsRouteFeatureList);
+                    GeoJsonSource source = style.getSourceAs(DASHED_DIRECTIONS_LINE_LAYER_SOURCE_ID);
+                    if (source != null)
+                    {
+                        source.setGeoJson(dashedFeatureCollection);
+                    }
+                }
+            });
+        }
+    }
+
+    private void initRecyclerView() {
+        RecyclerView recyclerView = findViewById(R.id.rv_on_top_of_map);
+        recyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext(),
+                LinearLayoutManager.HORIZONTAL, true));
+        recyclerView.setItemAnimator(new DefaultItemAnimator());
+        recyclerView.setAdapter(new LocationRecyclerViewAdapter(this,
+                createRecyclerViewLocations(), mapboxMap));
+        new LinearSnapHelper().attachToRecyclerView(recyclerView);
+    }
+
+    private List<SingleRecyclerViewLocation> createRecyclerViewLocations() {
+        ArrayList<SingleRecyclerViewLocation> locationList = new ArrayList<>();
+        for (int x = 0; x < possibleLocations.length; x++) {
+            SingleRecyclerViewLocation singleLocation = new SingleRecyclerViewLocation();
+            singleLocation.setName(evacNames[x]);
+            locationList.add(singleLocation);
+        }
+        return locationList;
+    }
+
+    class SingleRecyclerViewLocation
+    {
+        private String name;
+
+        public String getName()
+        {
+            return name;
+        }
+
+        public void setName(String name)
+        {
+            this.name = name;
+        }
+    }
+
+    static class LocationRecyclerViewAdapter extends
+            RecyclerView.Adapter<LocationRecyclerViewAdapter.MyViewHolder>
+    {
+        private List<SingleRecyclerViewLocation> locationList;
+        private MapboxMap mbMap;
+        private WeakReference<map> weakReference;
+
+        public LocationRecyclerViewAdapter(map activity,
+                                           List<SingleRecyclerViewLocation> locationList,
+                                           MapboxMap mapBoxMap)
+        {
+            this.locationList = locationList;
+            this.mbMap = mapBoxMap;
+            this.weakReference = new WeakReference<>(activity);
+        }
+
+        @NonNull
+        @Override
+        public MyViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType)
+        {
+            View itemView = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.cardview_symbol_layer, parent, false);
+            return new MyViewHolder(itemView);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull MyViewHolder holder, int position)
+        {
+            SingleRecyclerViewLocation singleRecyclerViewLocation = locationList.get(position);
+            holder.name.setText(singleRecyclerViewLocation.getName());
+            holder.setClickListener(new ItemClickListener() {
+                @Override
+                public void onClick(View view, int position) {
+                    weakReference.get()
+                            .drawPolyline(weakReference.get().directionsRouteList.get(position));
+                }
+            });
+        }
+
+        @Override
+        public int getItemCount() {
+            return locationList.size();
+        }
+
+        static class MyViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener
+        {
+            TextView name;
+            CardView singleCard;
+            ItemClickListener clickListener;
+
+            public MyViewHolder(@NonNull View itemView)
+            {
+                super(itemView);
+                name = itemView.findViewById(R.id.evacName);
+                singleCard = itemView.findViewById(R.id.single_location_cardview);
+                singleCard.setOnClickListener(this);
+            }
+
+            public void setClickListener(ItemClickListener itemClickListener)
+            {
+                this.clickListener = itemClickListener;
+            }
+
+            @Override
+            public void onClick(View v)
+            {
+                clickListener.onClick(v, getLayoutPosition());
+            }
+        }
+    }
+
+    public interface ItemClickListener
+    {
+        void onClick(View view, int position);
     }
 
     @SuppressWarnings( {"MissingPermission"})
@@ -315,7 +540,7 @@ public class map extends AppCompatActivity implements
     }
 
     @SuppressLint("StaticFieldLeak")
-    class backgroundTask extends AsyncTask<Void, Void, List<Feature>>
+    class backgroundTask extends AsyncTask<Void, Void, String>
     {
         @Override
         protected void onPreExecute()
@@ -327,10 +552,14 @@ public class map extends AppCompatActivity implements
         }
 
         @Override
-        protected List<Feature> doInBackground(Void... voids) {
-            try {
+        protected String doInBackground(Void... voids)
+        {
+            try
+            {
                 url = new URL("https://evacuationcenter.000webhostapp.com/getData.php");
-            } catch (MalformedURLException e) {
+            }
+            catch (MalformedURLException e)
+            {
                 e.printStackTrace();
             }
 
@@ -341,16 +570,20 @@ public class map extends AppCompatActivity implements
                 httpURLConnection.setReadTimeout(15000);
                 httpURLConnection.setConnectTimeout(15000);
                 httpURLConnection.connect();
-            } catch (IOException e) {
+            }
+            catch (IOException e)
+            {
                 e.printStackTrace();
             }
 
-            try {
+            try
+            {
                 InputStream inputStream = httpURLConnection.getInputStream(); // <--- read the data from the connection
                 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream)); // <-- read the data from the stream
                 StringBuilder stringBuilder = new StringBuilder();
 
-                while ((readLine = bufferedReader.readLine()) != null) {
+                while ((readLine = bufferedReader.readLine()) != null)
+                {
                     stringBuilder.append(readLine);
                 }
                 inputStream.close();
@@ -358,32 +591,16 @@ public class map extends AppCompatActivity implements
 
                 data = stringBuilder.toString();
 
-                try {
-                    JSONArray JA = new JSONArray(data);
-
-                    //features.add(Feature.fromGeometry(Point.fromLngLat(125.605769, 7.064497)));
-
-                    for (int i = 0; i < JA.length(); i++) {
-                        JSONObject JO = JA.getJSONObject(i);
-                        lat = Double.parseDouble(JO.getString("Lat"));
-                        lon = Double.parseDouble(JO.getString("Lon"));
-                        features.add(Feature.fromGeometry(Point.fromLngLat(lon, lat)));
-                    }
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-
-
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
                 httpURLConnection.disconnect();
             }
-            return features;
+            return data;
         }
 
         @Override
-        protected void onPostExecute(List<Feature> features)
+        protected void onPostExecute(String features)
         {
             progressDialog.dismiss();
             super.onPostExecute(features);
