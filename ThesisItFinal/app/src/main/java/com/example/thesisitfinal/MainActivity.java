@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -44,7 +45,7 @@ public class MainActivity extends AppCompatActivity {
                 Intent intent = new Intent(view.getContext(), GuideActivity.class);
                 view.getContext().startActivity(intent);}
         });
-
+        Toast.makeText(this, "Please enable your internet and location before using the map.", Toast.LENGTH_SHORT).show();
 
     }
 

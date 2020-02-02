@@ -6,16 +6,11 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSnapHelper;
@@ -44,8 +39,6 @@ import com.mapbox.mapboxsdk.maps.Style;
 import com.mapbox.mapboxsdk.style.layers.LineLayer;
 import com.mapbox.mapboxsdk.style.layers.SymbolLayer;
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource;
-import com.mapbox.services.android.navigation.ui.v5.NavigationLauncher;
-import com.mapbox.services.android.navigation.ui.v5.NavigationLauncherOptions;
 import com.mapbox.services.android.navigation.ui.v5.route.NavigationMapRoute;
 
 import org.json.JSONArray;
@@ -56,7 +49,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -91,7 +83,6 @@ public class map extends AppCompatActivity implements
     private PermissionsManager permissionsManager;
     private MapboxMap mapboxMap;
     private MapView mapView;
-    private DirectionsRoute currentRoute;
     private LocationComponent locationComponent;
     private NavigationMapRoute navigationMapRoute;
     private static final String MARKER_SOURCE = "markers-source";
@@ -109,6 +100,7 @@ public class map extends AppCompatActivity implements
     private Double lat;
     private Double lon;
     private String readLine = "";
+    private String ne;
     private LatLng[] possibleLocations;
     public static String[] evacNames;
     private Point originPoint;
@@ -116,7 +108,7 @@ public class map extends AppCompatActivity implements
     List<Feature> features = new ArrayList<>();
     ProgressDialog progressDialog;
     private FeatureCollection dashedFeatureCollection;;
-    List<DirectionsRoute> directionsRouteList = new ArrayList<>();
+    List<DirectionsRoute> directionsRouteList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -185,6 +177,7 @@ public class map extends AppCompatActivity implements
                                 ), PERSON_LAYER_ID);
 
                         button = findViewById(R.id.navButton);
+                        /*
                         button.setOnClickListener(new View.OnClickListener()
                         {
                             @Override
@@ -198,18 +191,23 @@ public class map extends AppCompatActivity implements
                                 NavigationLauncher.startNavigation(map.this, options);
                             }
                         });
+
+                         */
+                        Toast.makeText(map.this, "" + features.get(0).getStringProperty("name"), Toast.LENGTH_SHORT).show();
                     }
                 });
     }
 
-
     //do not change
     public void getRoutesToAllPoints()
     {
-        for(LatLng point: possibleLocations)
+        for(int i = 0; i < possibleLocations.length; i++)
         {
-            getRoute(Point.fromLngLat(point.getLongitude(), point.getLatitude()));
+            directionsRouteList = new ArrayList<DirectionsRoute>();
+            getRoute(Point.fromLngLat(possibleLocations[i].getLongitude(), possibleLocations[i].getLatitude()));
+            //ne += getRoute(Point.fromLngLat(point.getLongitude(), point.getLatitude())).toString();
         }
+
     }
 
     // do not change
@@ -230,9 +228,10 @@ public class map extends AppCompatActivity implements
                 } else if (response.body().routes().size() < 1) {
                     Timber.e("No routes found");
                 }
-                directionsRouteList.add(response.body().routes().get(0));
+                DirectionsRoute currentRoute;
+                currentRoute = response.body().routes().get(0);
+                directionsRouteList.add(currentRoute);
             }
-
             @Override
             public void onFailure(Call<DirectionsResponse> call, Throwable t)
             {
@@ -294,6 +293,7 @@ public class map extends AppCompatActivity implements
                 lat = Double.parseDouble(JO.getString("Lat"));
                 lon = Double.parseDouble(JO.getString("Lon"));
                 features.add(Feature.fromGeometry(Point.fromLngLat(lon, lat)));
+                features.get(i).addStringProperty("name", evacNames[i]);
                 //Toast.makeText(this, "" + Feature.fromGeometry(Point.fromLngLat(lon, lat)).toString(), Toast.LENGTH_SHORT).show();
             }
         }
@@ -305,7 +305,7 @@ public class map extends AppCompatActivity implements
         return FeatureCollection.fromFeatures(features);
     }
 
-    private void drawPolyline(final DirectionsRoute route)
+    public void drawPolyline(final DirectionsRoute route)
     {
         if (mapboxMap != null) {
             mapboxMap.getStyle(new Style.OnStyleLoaded() {
@@ -350,96 +350,6 @@ public class map extends AppCompatActivity implements
         return locationList;
     }
 
-    class SingleRecyclerViewLocation
-    {
-        private String name;
-
-        public String getName()
-        {
-            return name;
-        }
-
-        public void setName(String name)
-        {
-            this.name = name;
-        }
-    }
-
-    static class LocationRecyclerViewAdapter extends
-            RecyclerView.Adapter<LocationRecyclerViewAdapter.MyViewHolder>
-    {
-        private List<SingleRecyclerViewLocation> locationList;
-        private MapboxMap mbMap;
-        private WeakReference<map> weakReference;
-
-        public LocationRecyclerViewAdapter(map activity,
-                                           List<SingleRecyclerViewLocation> locationList,
-                                           MapboxMap mapBoxMap)
-        {
-            this.locationList = locationList;
-            this.mbMap = mapBoxMap;
-            this.weakReference = new WeakReference<>(activity);
-        }
-
-        @NonNull
-        @Override
-        public MyViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType)
-        {
-            View itemView = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.cardview_symbol_layer, parent, false);
-            return new MyViewHolder(itemView);
-        }
-
-        @Override
-        public void onBindViewHolder(@NonNull MyViewHolder holder, int position)
-        {
-            SingleRecyclerViewLocation singleRecyclerViewLocation = locationList.get(position);
-            holder.name.setText(singleRecyclerViewLocation.getName());
-            holder.setClickListener(new ItemClickListener() {
-                @Override
-                public void onClick(View view, int position) {
-                    weakReference.get()
-                            .drawPolyline(weakReference.get().directionsRouteList.get(position));
-                }
-            });
-        }
-
-        @Override
-        public int getItemCount() {
-            return locationList.size();
-        }
-
-        static class MyViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener
-        {
-            TextView name;
-            CardView singleCard;
-            ItemClickListener clickListener;
-
-            public MyViewHolder(@NonNull View itemView)
-            {
-                super(itemView);
-                name = itemView.findViewById(R.id.evacName);
-                singleCard = itemView.findViewById(R.id.single_location_cardview);
-                singleCard.setOnClickListener(this);
-            }
-
-            public void setClickListener(ItemClickListener itemClickListener)
-            {
-                this.clickListener = itemClickListener;
-            }
-
-            @Override
-            public void onClick(View v)
-            {
-                clickListener.onClick(v, getLayoutPosition());
-            }
-        }
-    }
-
-    public interface ItemClickListener
-    {
-        void onClick(View view, int position);
-    }
 
     @SuppressWarnings( {"MissingPermission"})
     private void enableLocationComponent(@NonNull Style loadedMapStyle)
