@@ -54,7 +54,6 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 import retrofit2.Call;
@@ -76,7 +75,7 @@ import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.lineWidth;
  * Use the LocationComponent to easily add a device location "puck" to a Mapbox map.
  */
 public class map extends AppCompatActivity implements
-        OnMapReadyCallback, PermissionsListener
+        OnMapReadyCallback, PermissionsListener, LocationRecyclerViewAdapter.ItemClickListener
 {
 
     //evacuationcenter.000webhostapp.com <----- website name
@@ -130,7 +129,6 @@ public class map extends AppCompatActivity implements
         }
     }
 
-    //need change
     @Override
     public void onMapReady(@NonNull final MapboxMap mapboxMap)
     {
@@ -148,7 +146,6 @@ public class map extends AppCompatActivity implements
                         initDestinationLocation();
                         initDestinationName();
                         initDestinationFeatureCollection();
-                        getRoutesToAllPoints();
                         initRecyclerView();
 
                         originPoint = Point.fromLngLat(locationComponent.getLastKnownLocation().getLongitude(),
@@ -194,23 +191,11 @@ public class map extends AppCompatActivity implements
 
                          */
                         Toast.makeText(map.this, "" + features.get(0).getStringProperty("name"), Toast.LENGTH_SHORT).show();
+                        getNearest();
                     }
                 });
     }
 
-    //do not change
-    public void getRoutesToAllPoints()
-    {
-        for(int i = 0; i < possibleLocations.length; i++)
-        {
-            directionsRouteList = new ArrayList<DirectionsRoute>();
-            getRoute(Point.fromLngLat(possibleLocations[i].getLongitude(), possibleLocations[i].getLatitude()));
-            //ne += getRoute(Point.fromLngLat(point.getLongitude(), point.getLatitude())).toString();
-        }
-
-    }
-
-    // do not change
     public void getRoute(Point destination)
     {
         MapboxDirections client = MapboxDirections.builder()
@@ -230,7 +215,7 @@ public class map extends AppCompatActivity implements
                 }
                 DirectionsRoute currentRoute;
                 currentRoute = response.body().routes().get(0);
-                directionsRouteList.add(currentRoute);
+                drawPolyline(currentRoute);
             }
             @Override
             public void onFailure(Call<DirectionsResponse> call, Throwable t)
@@ -281,7 +266,6 @@ public class map extends AppCompatActivity implements
         }
     }
 
-
     private FeatureCollection initDestinationFeatureCollection()
     {
         try
@@ -294,7 +278,6 @@ public class map extends AppCompatActivity implements
                 lon = Double.parseDouble(JO.getString("Lon"));
                 features.add(Feature.fromGeometry(Point.fromLngLat(lon, lat)));
                 features.get(i).addStringProperty("name", evacNames[i]);
-                //Toast.makeText(this, "" + Feature.fromGeometry(Point.fromLngLat(lon, lat)).toString(), Toast.LENGTH_SHORT).show();
             }
         }
         catch (JSONException e)
@@ -305,28 +288,36 @@ public class map extends AppCompatActivity implements
         return FeatureCollection.fromFeatures(features);
     }
 
+    private void getNearest()
+    {
+        Double closestEvac = Double.MAX_VALUE;
+        int indexOfNearest = 0;
+
+        for(int i = 0; i < possibleLocations.length; i++)
+        {
+            Double dist = Math.pow(Math.abs(
+                    locationComponent.getLastKnownLocation().getLatitude() -
+                    possibleLocations[i].getLatitude()), 2) +
+                    Math.pow(Math.abs(locationComponent.getLastKnownLocation().getLongitude() -
+                    possibleLocations[i].getLongitude()), 2);
+
+            if(dist < closestEvac)
+            {
+                closestEvac = dist;
+                indexOfNearest = i;
+            }
+        }
+
+        getRoute((Point) features.get(indexOfNearest).geometry());
+    }
+
     public void drawPolyline(final DirectionsRoute route)
     {
-        if (mapboxMap != null) {
-            mapboxMap.getStyle(new Style.OnStyleLoaded() {
-                @Override
-                public void onStyleLoaded(@NonNull Style style)
-                {
-                    List<Feature> directionsRouteFeatureList = new ArrayList<>();
-                    LineString lineString = LineString.fromPolyline(Objects.requireNonNull(route.geometry()), PRECISION_6);
-                    List<Point> lineStringCoordinates = lineString.coordinates();
-                    for (int i = 0; i < lineStringCoordinates.size(); i++) {
-                        directionsRouteFeatureList.add(Feature.fromGeometry(
-                                LineString.fromLngLats(lineStringCoordinates)));
-                    }
-                    dashedFeatureCollection = FeatureCollection.fromFeatures(directionsRouteFeatureList);
-                    GeoJsonSource source = style.getSourceAs(DASHED_DIRECTIONS_LINE_LAYER_SOURCE_ID);
-                    if (source != null)
-                    {
-                        source.setGeoJson(dashedFeatureCollection);
-                    }
-                }
-            });
+        GeoJsonSource source = mapboxMap.getStyle().getSourceAs(DASHED_DIRECTIONS_LINE_LAYER_SOURCE_ID);
+        if (source != null)
+        {
+            source.setGeoJson(FeatureCollection.fromFeature(Feature.fromGeometry(
+                    LineString.fromPolyline(route.geometry(), PRECISION_6))));
         }
     }
 
@@ -350,6 +341,18 @@ public class map extends AppCompatActivity implements
         return locationList;
     }
 
+    @Override
+    public void onItemClick(int position)
+    {
+        try
+        {
+            getRoute((Point) features.get(position).geometry());
+        }
+        catch (Exception e)
+        {
+            Toast.makeText(this, "" + e.toString(), Toast.LENGTH_SHORT).show();
+        }
+    }
 
     @SuppressWarnings( {"MissingPermission"})
     private void enableLocationComponent(@NonNull Style loadedMapStyle)

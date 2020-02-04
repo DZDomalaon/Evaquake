@@ -12,7 +12,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 
-import java.lang.ref.WeakReference;
 import java.util.List;
 
 import static com.mapbox.mapboxsdk.Mapbox.getApplicationContext;
@@ -22,13 +21,13 @@ public class LocationRecyclerViewAdapter extends
 {
     private List<SingleRecyclerViewLocation> locationList;
     private MapboxMap mbMap;
-    private WeakReference<map> weakReference;
+    private static ItemClickListener clickListener;
 
-    public LocationRecyclerViewAdapter(map activity, List<SingleRecyclerViewLocation> locationList, MapboxMap mapBoxMap)
+    public LocationRecyclerViewAdapter(ItemClickListener cardClick, List<SingleRecyclerViewLocation> locationList, MapboxMap mapBoxMap)
     {
         this.locationList = locationList;
         this.mbMap = mapBoxMap;
-        this.weakReference = new WeakReference<>(activity);
+        this.clickListener = cardClick;
     }
 
     @Override
@@ -53,30 +52,20 @@ public class LocationRecyclerViewAdapter extends
 
     public interface ItemClickListener
     {
-        void onItemClick(View view, int position);
+        void onItemClick(int position);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull MyViewHolder holder, int position)
+    public void onBindViewHolder(@NonNull  MyViewHolder holder, int position)
     {
         SingleRecyclerViewLocation singleRecyclerViewLocation = locationList.get(position);
         holder.name.setText(singleRecyclerViewLocation.getName());
         holder.setIsRecyclable(false);
-        holder.setClickListener(new ItemClickListener()
-        {
-            @Override
-            public void onItemClick(View view, int position)
-            {
-                //weakReference.get().directionsRouteList.
-                weakReference.get()
-                        .drawPolyline(weakReference.get().directionsRouteList.get(position));
-                Toast.makeText(getApplicationContext(), "" + weakReference.get().directionsRouteList.get(0), Toast.LENGTH_SHORT).show();
-            }
-        });
     }
 
     @Override
-    public int getItemCount() {
+    public int getItemCount()
+    {
         return locationList.size();
     }
 
@@ -84,25 +73,32 @@ public class LocationRecyclerViewAdapter extends
     {
         TextView name;
         CardView singleCard;
-        ItemClickListener clickListener;
 
-        public MyViewHolder(@NonNull View itemView)
+        MyViewHolder(@NonNull View itemView)
         {
             super(itemView);
             name = itemView.findViewById(R.id.evacName);
             singleCard = itemView.findViewById(R.id.single_location_cardview);
-            singleCard.setOnClickListener(this);
-        }
-
-        public void setClickListener(ItemClickListener itemClickListener)
-        {
-            this.clickListener = itemClickListener;
+            singleCard.setOnClickListener(new View.OnClickListener()
+            {
+                @Override
+                public void onClick(View v)
+                {
+                    try
+                    {
+                        clickListener.onItemClick(getLayoutPosition());
+                    }
+                    catch (Exception e)
+                    {
+                        Toast.makeText(getApplicationContext(), "" + e, Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
         }
 
         @Override
         public void onClick(View v)
         {
-            clickListener.onItemClick(v, getLayoutPosition());
         }
     }
 }
