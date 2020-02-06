@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
@@ -39,7 +40,8 @@ import com.mapbox.mapboxsdk.maps.Style;
 import com.mapbox.mapboxsdk.style.layers.LineLayer;
 import com.mapbox.mapboxsdk.style.layers.SymbolLayer;
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource;
-import com.mapbox.services.android.navigation.ui.v5.route.NavigationMapRoute;
+import com.mapbox.services.android.navigation.ui.v5.NavigationLauncher;
+import com.mapbox.services.android.navigation.ui.v5.NavigationLauncherOptions;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -62,28 +64,24 @@ import retrofit2.Response;
 import timber.log.Timber;
 
 import static com.mapbox.core.constants.Constants.PRECISION_6;
-import static com.mapbox.mapboxsdk.style.layers.Property.LINE_JOIN_ROUND;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.iconAllowOverlap;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.iconIgnorePlacement;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.iconImage;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.iconSize;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.lineColor;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.lineJoin;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.lineWidth;
 
 /**
  * Use the LocationComponent to easily add a device location "puck" to a Mapbox map.
  */
 public class map extends AppCompatActivity implements
-        OnMapReadyCallback, PermissionsListener, LocationRecyclerViewAdapter.ItemClickListener
+        OnMapReadyCallback, PermissionsListener, LocationRecyclerViewAdapter.ItemClickListener,
+        MapboxMap.OnMapClickListener
 {
-
-    //evacuationcenter.000webhostapp.com <----- website name
     private PermissionsManager permissionsManager;
     private MapboxMap mapboxMap;
     private MapView mapView;
     private LocationComponent locationComponent;
-    private NavigationMapRoute navigationMapRoute;
     private static final String MARKER_SOURCE = "markers-source";
     private static final String MARKER_STYLE_LAYER = "markers-style-layer";
     private static final String MARKER_IMAGE = "custom-marker";
@@ -98,16 +96,13 @@ public class map extends AppCompatActivity implements
     private String data = "";
     private Double lat;
     private Double lon;
-    private String readLine = "";
-    private String ne;
     private LatLng[] possibleLocations;
     public static String[] evacNames;
     private Point originPoint;
-    private JSONArray JA;
+    RecyclerView recyclerView;
     List<Feature> features = new ArrayList<>();
+    ArrayList<SingleRecyclerViewLocation> locationList;
     ProgressDialog progressDialog;
-    private FeatureCollection dashedFeatureCollection;;
-    List<DirectionsRoute> directionsRouteList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -134,6 +129,7 @@ public class map extends AppCompatActivity implements
     {
         map.this.mapboxMap = mapboxMap;
         map.this.mapboxMap.setMinZoomPreference(15);
+        map.this.mapboxMap.addOnMapClickListener(map.this);
         mapboxMap.setStyle(getString(R.string.navigation_guidance_day),
                 new Style.OnStyleLoaded()
                 {
@@ -151,7 +147,7 @@ public class map extends AppCompatActivity implements
                         originPoint = Point.fromLngLat(locationComponent.getLastKnownLocation().getLongitude(),
                                 locationComponent.getLastKnownLocation().getLatitude());
                         style.addImage(MARKER_IMAGE, BitmapFactory.decodeResource(
-                                map.this.getResources(), R.drawable.mapbox_marker_icon_default));
+                                map.this.getResources(), R.drawable.blue_selected_evac));
                         style.addSource(new GeoJsonSource(MARKER_SOURCE, initDestinationFeatureCollection()));
                         style.addLayer(new SymbolLayer(MARKER_STYLE_LAYER, MARKER_SOURCE).withProperties(
                                 iconImage(MARKER_IMAGE),
@@ -169,31 +165,37 @@ public class map extends AppCompatActivity implements
                         style.addLayerBelow(new LineLayer(DASHED_DIRECTIONS_LINE_LAYER_ID, DASHED_DIRECTIONS_LINE_LAYER_SOURCE_ID)
                                 .withProperties(
                                         lineWidth(7f),
-                                        lineJoin(LINE_JOIN_ROUND),
                                         lineColor(Color.parseColor("#2096F3"))
-                                ), PERSON_LAYER_ID);
+                                ), MARKER_STYLE_LAYER);
 
-                        button = findViewById(R.id.navButton);
-                        /*
-                        button.setOnClickListener(new View.OnClickListener()
-                        {
-                            @Override
-                            public void onClick(View v) {
-                                boolean simulateRoute = false;
-                                NavigationLauncherOptions options = NavigationLauncherOptions.builder()
-                                        .directionsRoute(currentRoute)
-                                        .shouldSimulateRoute(simulateRoute)
-                                        .build();
-                                // Call this method with Context from within an Activity
-                                NavigationLauncher.startNavigation(map.this, options);
-                            }
-                        });
-
-                         */
-                        Toast.makeText(map.this, "" + features.get(0).getStringProperty("name"), Toast.LENGTH_SHORT).show();
                         getNearest();
                     }
                 });
+    }
+
+    @Override
+    public boolean onMapClick(@NonNull LatLng point)
+    {
+        Double closest = Double.MAX_VALUE;
+        int index = 0;
+        try
+        {
+            for(int i = 0; i < possibleLocations.length; i++)
+            {
+                Double check = Math.pow(Math.abs(possibleLocations[i].getLatitude() - point.getLatitude()),2);
+                if(check < closest)
+                {
+                    closest = check;
+                    index = i;
+                }
+                recyclerView.scrollToPosition(index);
+            }
+        }
+        catch (Exception e)
+        {
+            Toast.makeText(this, "" + e.toString() , Toast.LENGTH_SHORT).show();
+        }
+        return true;
     }
 
     public void getRoute(Point destination)
@@ -213,9 +215,22 @@ public class map extends AppCompatActivity implements
                 } else if (response.body().routes().size() < 1) {
                     Timber.e("No routes found");
                 }
-                DirectionsRoute currentRoute;
+                final DirectionsRoute currentRoute;
                 currentRoute = response.body().routes().get(0);
                 drawPolyline(currentRoute);
+                button = findViewById(R.id.navButton);
+                button.setOnClickListener(new View.OnClickListener()
+                {
+                    @Override
+                    public void onClick(View v) {
+                        boolean simulateRoute = false;
+                        NavigationLauncherOptions options = NavigationLauncherOptions.builder()
+                                .directionsRoute(currentRoute)
+                                .shouldSimulateRoute(simulateRoute)
+                                .build();
+                        NavigationLauncher.startNavigation(map.this, options);
+                    }
+                });
             }
             @Override
             public void onFailure(Call<DirectionsResponse> call, Throwable t)
@@ -232,7 +247,6 @@ public class map extends AppCompatActivity implements
             JSONArray JA = new JSONArray(data);
             possibleLocations = new LatLng[JA.length()];
             evacNames = new String[JA.length()];
-            //features.add(Feature.fromGeometry(Point.fromLngLat(125.605769, 7.064497)));
 
             for (int i = 0; i < JA.length(); i++)
             {
@@ -309,6 +323,7 @@ public class map extends AppCompatActivity implements
         }
 
         getRoute((Point) features.get(indexOfNearest).geometry());
+        recyclerView.smoothScrollToPosition(indexOfNearest);
     }
 
     public void drawPolyline(final DirectionsRoute route)
@@ -321,8 +336,9 @@ public class map extends AppCompatActivity implements
         }
     }
 
-    private void initRecyclerView() {
-        RecyclerView recyclerView = findViewById(R.id.rv_on_top_of_map);
+    private void initRecyclerView()
+    {
+        recyclerView = findViewById(R.id.rv_on_top_of_map);
         recyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext(),
                 LinearLayoutManager.HORIZONTAL, true));
         recyclerView.setItemAnimator(new DefaultItemAnimator());
@@ -332,10 +348,12 @@ public class map extends AppCompatActivity implements
     }
 
     private List<SingleRecyclerViewLocation> createRecyclerViewLocations() {
-        ArrayList<SingleRecyclerViewLocation> locationList = new ArrayList<>();
-        for (int x = 0; x < possibleLocations.length; x++) {
+        locationList = new ArrayList<>();
+        for (int x = 0; x < features.size(); x++)
+        {
+            Feature singleFeature = features.get(x);
             SingleRecyclerViewLocation singleLocation = new SingleRecyclerViewLocation();
-            singleLocation.setName(evacNames[x]);
+            singleLocation.setName(singleFeature.getStringProperty("name"));
             locationList.add(singleLocation);
         }
         return locationList;
@@ -346,6 +364,7 @@ public class map extends AppCompatActivity implements
     {
         try
         {
+            button.isEnabled();
             getRoute((Point) features.get(position).geometry());
         }
         catch (Exception e)
@@ -495,6 +514,7 @@ public class map extends AppCompatActivity implements
                 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream)); // <-- read the data from the stream
                 StringBuilder stringBuilder = new StringBuilder();
 
+                String readLine = "";
                 while ((readLine = bufferedReader.readLine()) != null)
                 {
                     stringBuilder.append(readLine);
