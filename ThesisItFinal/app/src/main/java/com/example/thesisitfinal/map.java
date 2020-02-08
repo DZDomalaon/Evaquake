@@ -6,17 +6,24 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSnapHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.mapbox.android.core.permissions.PermissionsListener;
 import com.mapbox.android.core.permissions.PermissionsManager;
 import com.mapbox.api.directions.v5.DirectionsCriteria;
@@ -104,11 +111,15 @@ public class map extends AppCompatActivity implements
     ArrayList<SingleRecyclerViewLocation> locationList;
     ProgressDialog progressDialog;
 
+    Toolbar toolbar;
+    FloatingActionButton btnTraffic;
+
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
 
+        //Map
         Mapbox.getInstance(this, getString(R.string.access_token));
         setContentView(R.layout.activity_map);
         mapView = findViewById(R.id.mapView);
@@ -122,8 +133,66 @@ public class map extends AppCompatActivity implements
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+
+        //Toolbar
+        toolbar = findViewById(R.id.toolbar);
+        toolbar.setTitleTextColor(Color.WHITE);
+        setSupportActionBar(toolbar);
+        getSupportActionBar().setTitle("Map");
+
+        //Traffic FAB
+        btnTraffic = findViewById(R.id.trafficBtn);
+        btnTraffic.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Toast.makeText(map.this, "SHOW TRAFFIC", Toast.LENGTH_SHORT).show();
+                //I-Change ra ang toast pang test rana
+            }
+        });
     }
 
+    //For Toolbar
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.info:
+                showCustomDialog();
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    //For Info Dialog
+    private void showCustomDialog() {
+
+        ViewGroup viewGroup = findViewById(android.R.id.content);
+
+        final View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog, viewGroup, false);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+
+        builder.setView(dialogView);
+
+        final AlertDialog alertDialog = builder.create();
+
+        alertDialog.show();
+
+        dialogView.findViewById(R.id.buttonOk).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                alertDialog.dismiss();
+            }
+        });
+    }
+
+    //For Map
     @Override
     public void onMapReady(@NonNull final MapboxMap mapboxMap)
     {

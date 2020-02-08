@@ -18,9 +18,10 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.iid.InstanceIdResult;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 public class MainActivity extends AppCompatActivity {
-    private Button btn_instructions, btn_map, btn_guide;
+    private Button btn_map, btn_guide;
     private static final String TAG = "MainActivity";
 
     @Override
@@ -28,17 +29,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        btn_instructions = findViewById(R.id.instructionsBtn);
         btn_map = findViewById(R.id.mapBtn);
         btn_guide = findViewById(R.id.guideBtn);
-
-        btn_instructions.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(view.getContext(), test.class);
-                view.getContext().startActivity(intent);
-            }
-        });
 
         btn_map.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -77,28 +69,9 @@ public class MainActivity extends AppCompatActivity {
 
                     }
                 });
-        Toast.makeText(this, "Please enable your internet and location before using the map.", Toast.LENGTH_SHORT).show();
+
+        Toast.makeText(this, "Please enable your internet and location before using the map.", Toast.LENGTH_LONG).show();
 
     }
 
-    private void showDialog()
-    {
-        //before inflating the custom alert dialog layout, we will get the current activity viewgroup
-        ViewGroup viewGroup = findViewById(android.R.id.content);
-
-        //then we will inflate the custom alert dialog xml that we created
-        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog, viewGroup, false);
-
-
-        //Now we need an AlertDialog.Builder object
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-
-        //setting the view of the builder to our custom view that we already inflated
-        builder.setView(dialogView);
-
-        //finally creating the alert dialog and displaying it
-        AlertDialog alertDialog = builder.create();
-        alertDialog.show();
-
-    }
 }
