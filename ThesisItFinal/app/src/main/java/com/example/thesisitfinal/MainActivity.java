@@ -1,23 +1,17 @@
 package com.example.thesisitfinal;
 
-import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
-import com.google.firebase.iid.FirebaseInstanceId;
-import com.google.firebase.iid.InstanceIdResult;
 import com.google.firebase.messaging.FirebaseMessaging;
 
 public class MainActivity extends AppCompatActivity {
@@ -47,26 +41,15 @@ public class MainActivity extends AppCompatActivity {
                 view.getContext().startActivity(intent);}
         });
 
-        FirebaseInstanceId.getInstance().getInstanceId()
-                .addOnCompleteListener(new OnCompleteListener<InstanceIdResult>()
-                {
+        FirebaseMessaging.getInstance().subscribeToTopic("evacThesis")
+                .addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
-                    public void onComplete(@NonNull Task<InstanceIdResult> task)
-                    {
-                        if(!task.isComplete())
-                        {
-                            Log.w(TAG, "getInstanceId failed", task.getException());
-                            return;
+                    public void onComplete(@NonNull Task<Void> task) {
+                        String msg = "Subscribed successfully";
+                        if (!task.isSuccessful()) {
+                            msg = "Can't subscribe";
                         }
-                            // Get new Instance ID token
-                        String token = task.getResult().getToken();
-
-                        // Log and toast
-                        @SuppressLint({"StringFormatInvalid", "LocalSuppress"})
-                        String msg = getString(R.string.msg_token_fmt, token);
-                        Log.d(TAG, token);
-                        Toast.makeText(MainActivity.this, token, Toast.LENGTH_SHORT).show();
-
+                        Log.d(TAG, msg);
                     }
                 });
 

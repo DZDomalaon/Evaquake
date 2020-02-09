@@ -56,16 +56,6 @@
             android:textColor="@color/colorPrimaryDark"
             android:textSize="18dp" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="• Click the NAVIGATION button to start navigating to the Evacuation Center"
-            android:textAlignment="center"
-            android:textAppearance="@style/TextAppearance.AppCompat.Medium"
-            android:textColor="@color/colorPrimaryDark"
-            android:textSize="18dp" />
-
         <Button
             android:id="@+id/buttonOk"
             android:layout_width="100dp"

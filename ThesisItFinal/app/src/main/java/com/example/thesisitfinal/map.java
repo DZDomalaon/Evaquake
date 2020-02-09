@@ -11,7 +11,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -44,11 +43,10 @@ import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.mapboxsdk.maps.Style;
+import com.mapbox.mapboxsdk.plugins.traffic.TrafficPlugin;
 import com.mapbox.mapboxsdk.style.layers.LineLayer;
 import com.mapbox.mapboxsdk.style.layers.SymbolLayer;
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource;
-import com.mapbox.services.android.navigation.ui.v5.NavigationLauncher;
-import com.mapbox.services.android.navigation.ui.v5.NavigationLauncherOptions;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -89,6 +87,7 @@ public class map extends AppCompatActivity implements
     private MapboxMap mapboxMap;
     private MapView mapView;
     private LocationComponent locationComponent;
+    private DirectionsRoute currentRoute;
     private static final String MARKER_SOURCE = "markers-source";
     private static final String MARKER_STYLE_LAYER = "markers-style-layer";
     private static final String MARKER_IMAGE = "custom-marker";
@@ -97,7 +96,6 @@ public class map extends AppCompatActivity implements
     private static final String PERSON_LAYER_ID = "PERSON_LAYER_ID";
     private static final String DASHED_DIRECTIONS_LINE_LAYER_SOURCE_ID = "DASHED_DIRECTIONS_LINE_LAYER_SOURCE_ID";
     private static final String DASHED_DIRECTIONS_LINE_LAYER_ID = "DASHED_DIRECTIONS_LINE_LAYER_ID";
-    private Button button;
     private URL url;
     private HttpURLConnection httpURLConnection;
     private String data = "";
@@ -113,7 +111,7 @@ public class map extends AppCompatActivity implements
 
     Toolbar toolbar;
     FloatingActionButton btnTraffic;
-
+    TrafficPlugin trafficPlugin;
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
@@ -140,15 +138,6 @@ public class map extends AppCompatActivity implements
         setSupportActionBar(toolbar);
         getSupportActionBar().setTitle("Map");
 
-        //Traffic FAB
-        btnTraffic = findViewById(R.id.trafficBtn);
-        btnTraffic.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Toast.makeText(map.this, "SHOW TRAFFIC", Toast.LENGTH_SHORT).show();
-                //I-Change ra ang toast pang test rana
-            }
-        });
     }
 
     //For Toolbar
@@ -237,6 +226,18 @@ public class map extends AppCompatActivity implements
                                         lineColor(Color.parseColor("#2096F3"))
                                 ), MARKER_STYLE_LAYER);
 
+                        //Traffic FAB
+                        trafficPlugin = new TrafficPlugin(mapView, mapboxMap, style);
+                        trafficPlugin.setVisibility(false);
+                        btnTraffic = findViewById(R.id.trafficBtn);
+                        btnTraffic.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                if (mapboxMap != null) {
+                                    trafficPlugin.setVisibility(!trafficPlugin.isVisible());
+                                }
+                            }
+                        });
                         getNearest();
                     }
                 });
@@ -284,22 +285,8 @@ public class map extends AppCompatActivity implements
                 } else if (response.body().routes().size() < 1) {
                     Timber.e("No routes found");
                 }
-                final DirectionsRoute currentRoute;
                 currentRoute = response.body().routes().get(0);
                 drawPolyline(currentRoute);
-                button = findViewById(R.id.navButton);
-                button.setOnClickListener(new View.OnClickListener()
-                {
-                    @Override
-                    public void onClick(View v) {
-                        boolean simulateRoute = false;
-                        NavigationLauncherOptions options = NavigationLauncherOptions.builder()
-                                .directionsRoute(currentRoute)
-                                .shouldSimulateRoute(simulateRoute)
-                                .build();
-                        NavigationLauncher.startNavigation(map.this, options);
-                    }
-                });
             }
             @Override
             public void onFailure(Call<DirectionsResponse> call, Throwable t)
@@ -433,7 +420,6 @@ public class map extends AppCompatActivity implements
     {
         try
         {
-            button.isEnabled();
             getRoute((Point) features.get(position).geometry());
         }
         catch (Exception e)
