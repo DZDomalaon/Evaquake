@@ -24,14 +24,14 @@
             </intent-filter>
         </service>
 
-        <activity android:name=".map" />
+        <activity android:name=".map"
+            android:parentActivityName=".MainActivity" />
         <activity android:name=".test" />
         <activity android:name=".GuideActivity" />
         <activity android:name=".InfoActivity" />
         <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>

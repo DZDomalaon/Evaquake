@@ -12,6 +12,8 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.iid.InstanceIdResult;
 import com.google.firebase.messaging.FirebaseMessaging;
 
 public class MainActivity extends AppCompatActivity {
@@ -41,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
                 view.getContext().startActivity(intent);}
         });
 
+        //Subscribe to topic
         FirebaseMessaging.getInstance().subscribeToTopic("evacThesis")
                 .addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
@@ -54,7 +57,6 @@ public class MainActivity extends AppCompatActivity {
                 });
 
         Toast.makeText(this, "Please enable your internet and location before using the map.", Toast.LENGTH_LONG).show();
-
     }
 
 }

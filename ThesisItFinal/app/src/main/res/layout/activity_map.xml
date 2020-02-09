@@ -34,7 +34,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|right"
             android:layout_marginRight="10dp"
-            android:layout_marginBottom="100dp"
+            android:layout_marginBottom="110dp"
             android:src="@drawable/ic_traffic" />
 
         <androidx.recyclerview.widget.RecyclerView
