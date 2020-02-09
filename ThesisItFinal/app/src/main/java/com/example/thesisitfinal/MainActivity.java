@@ -43,6 +43,23 @@ public class MainActivity extends AppCompatActivity {
                 view.getContext().startActivity(intent);}
         });
 
+        //Get token
+        FirebaseInstanceId.getInstance().getInstanceId()
+                .addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<InstanceIdResult> task) {
+                        if (!task.isSuccessful()) {
+                            Log.w(TAG, "getInstanceId failed", task.getException());
+                            return;
+                        }
+
+                        String token = task.getResult().getToken();
+                        Log.d(TAG, token);
+
+                        Toast.makeText(MainActivity.this, token, Toast.LENGTH_SHORT).show();
+                    }
+                });
+
         //Subscribe to topic
         FirebaseMessaging.getInstance().subscribeToTopic("evacThesis")
                 .addOnCompleteListener(new OnCompleteListener<Void>() {

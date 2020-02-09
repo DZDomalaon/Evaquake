@@ -46,8 +46,19 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService
     public void showNotification(RemoteMessage.Notification message){
         NotificationManager notificationManager = (NotificationManager)
                 getSystemService(Context.NOTIFICATION_SERVICE);
+
         String NOTIFICATION_CHANNEL_ID = "com.example.thesisitfinal";
 
+        //OPEN MAP ACTIVITY
+        Intent resultIntent = new Intent(this, map.class);
+
+        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
+        stackBuilder.addNextIntentWithParentStack(resultIntent);
+
+        PendingIntent resultPendingIntent =
+                stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        //BUILD NOTIF
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel notificationChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID,
                     "Notification",
@@ -66,21 +77,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(message.getTitle())
                 .setContentText(message.getBody());
-
-        //TO MAP ACTIVITY
-
-        // Create an Intent for the activity you want to start
-        Intent resultIntent = new Intent(this, map.class);
-
-        // Create the TaskStackBuilder and add the intent, which inflates the back stack
-        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
-        stackBuilder.addNextIntentWithParentStack(resultIntent);
-
-        // Get the PendingIntent containing the entire back stack
-        PendingIntent resultPendingIntent =
-                stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
-
-
+                notificationBuilder.setContentIntent(resultPendingIntent);
 
         notificationManager.notify(new Random().nextInt(),notificationBuilder.build());
     }
