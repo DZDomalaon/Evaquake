@@ -61,6 +61,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 import retrofit2.Call;
@@ -246,6 +247,42 @@ public class map extends AppCompatActivity implements
     @Override
     public boolean onMapClick(@NonNull LatLng point)
     {
+        List<Feature> markerLayerFeatures = mapboxMap.queryRenderedFeatures(mapboxMap.getProjection().toScreenLocation(point)
+                , MARKER_STYLE_LAYER);
+
+        if(!markerLayerFeatures.isEmpty())
+        {
+            String name = markerLayerFeatures.get(0).getStringProperty("name");
+            List<Feature> featureList = features;
+            for(int i = 0; i < featureList.size(); i++)
+            {
+                try {
+                    if (featureList.get(i).getStringProperty("name").equals(name))
+                    {
+                        Point selectedFeaturePoint = (Point) featureList.get(i).geometry();
+
+                        if (Objects.requireNonNull(selectedFeaturePoint).latitude() != originPoint.latitude()) {
+                            for (int x = 0; x < features.size(); x++) {
+                                if (locationList.get(x).getLocation().latitude() == selectedFeaturePoint.latitude()) {
+       
+                                    recyclerView.smoothScrollToPosition(x);
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e)
+                {
+                    //Toast.makeText(this, "" + e.toString(), Toast.LENGTH_SHORT).show();
+                }
+
+            }
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+        /*
         Double closest = Double.MAX_VALUE;
         int index = 0;
         try
@@ -266,6 +303,8 @@ public class map extends AppCompatActivity implements
             Toast.makeText(this, "" + e.toString() , Toast.LENGTH_SHORT).show();
         }
         return true;
+
+         */
     }
 
     public void getRoute(Point destination)
@@ -410,6 +449,7 @@ public class map extends AppCompatActivity implements
             Feature singleFeature = features.get(x);
             SingleRecyclerViewLocation singleLocation = new SingleRecyclerViewLocation();
             singleLocation.setName(singleFeature.getStringProperty("name"));
+            singleLocation.setLocation((Point) singleFeature.geometry());
             locationList.add(singleLocation);
         }
         return locationList;
