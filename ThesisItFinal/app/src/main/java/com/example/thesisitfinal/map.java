@@ -34,6 +34,8 @@ import com.mapbox.geojson.FeatureCollection;
 import com.mapbox.geojson.LineString;
 import com.mapbox.geojson.Point;
 import com.mapbox.mapboxsdk.Mapbox;
+import com.mapbox.mapboxsdk.camera.CameraPosition;
+import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.location.LocationComponent;
 import com.mapbox.mapboxsdk.location.LocationComponentActivationOptions;
@@ -100,6 +102,7 @@ public class map extends AppCompatActivity implements
     private URL url;
     private HttpURLConnection httpURLConnection;
     private String data = "";
+    private String criteria = Transpo.modeofTranspo;
     private Double lat;
     private Double lon;
     private LatLng[] possibleLocations;
@@ -206,7 +209,7 @@ public class map extends AppCompatActivity implements
                         originPoint = Point.fromLngLat(locationComponent.getLastKnownLocation().getLongitude(),
                                 locationComponent.getLastKnownLocation().getLatitude());
                         style.addImage(MARKER_IMAGE, BitmapFactory.decodeResource(
-                                map.this.getResources(), R.drawable.blue_selected_evac));
+                                map.this.getResources(), R.drawable.mapbox_marker_icon_default));
                         style.addSource(new GeoJsonSource(MARKER_SOURCE, initDestinationFeatureCollection()));
                         style.addLayer(new SymbolLayer(MARKER_STYLE_LAYER, MARKER_SOURCE).withProperties(
                                 iconImage(MARKER_IMAGE),
@@ -264,7 +267,7 @@ public class map extends AppCompatActivity implements
                         if (Objects.requireNonNull(selectedFeaturePoint).latitude() != originPoint.latitude()) {
                             for (int x = 0; x < features.size(); x++) {
                                 if (locationList.get(x).getLocation().latitude() == selectedFeaturePoint.latitude()) {
-       
+                                    repositionMapCamera(selectedFeaturePoint);
                                     recyclerView.smoothScrollToPosition(x);
                                 }
                             }
@@ -282,29 +285,6 @@ public class map extends AppCompatActivity implements
         {
             return false;
         }
-        /*
-        Double closest = Double.MAX_VALUE;
-        int index = 0;
-        try
-        {
-            for(int i = 0; i < possibleLocations.length; i++)
-            {
-                Double check = Math.pow(Math.abs(possibleLocations[i].getLatitude() - point.getLatitude()),2);
-                if(check < closest)
-                {
-                    closest = check;
-                    index = i;
-                }
-                recyclerView.scrollToPosition(index);
-            }
-        }
-        catch (Exception e)
-        {
-            Toast.makeText(this, "" + e.toString() , Toast.LENGTH_SHORT).show();
-        }
-        return true;
-
-         */
     }
 
     public void getRoute(Point destination)
@@ -313,7 +293,7 @@ public class map extends AppCompatActivity implements
                 .origin(originPoint)
                 .destination(destination)
                 .overview(DirectionsCriteria.OVERVIEW_FULL)
-                .profile(DirectionsCriteria.PROFILE_DRIVING)
+                .profile(criteria)
                 .accessToken(getString((R.string.access_token)))
                 .build();
         client.enqueueCall(new Callback<DirectionsResponse>() {
@@ -466,6 +446,14 @@ public class map extends AppCompatActivity implements
         {
             Toast.makeText(this, "" + e.toString(), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void repositionMapCamera(Point newTarget)
+    {
+        CameraPosition newCameraPosition = new CameraPosition.Builder()
+                .target(new LatLng(newTarget.latitude(), newTarget.longitude()))
+                .build();
+        mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(newCameraPosition), 1200);
     }
 
     @SuppressWarnings( {"MissingPermission"})
