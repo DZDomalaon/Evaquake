@@ -30,6 +30,16 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
+            android:text="• User should be outside of a building for route accuracy"
+            android:textAlignment="center"
+            android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+            android:textColor="@color/colorPrimaryDark"
+            android:textSize="18dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
             android:text="• The first route loaded is the NEAREST Evacuation Center"
             android:textAlignment="center"
             android:textAppearance="@style/TextAppearance.AppCompat.Medium"

@@ -31,7 +31,7 @@ public class MainActivity extends AppCompatActivity {
         btn_map.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent intent = new Intent(view.getContext(), map.class);
+                Intent intent = new Intent(view.getContext(), Transpo.class);
                 view.getContext().startActivity(intent);
             }
         });
@@ -42,23 +42,6 @@ public class MainActivity extends AppCompatActivity {
                 Intent intent = new Intent(view.getContext(), GuideActivity.class);
                 view.getContext().startActivity(intent);}
         });
-
-        //Get token
-        FirebaseInstanceId.getInstance().getInstanceId()
-                .addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<InstanceIdResult> task) {
-                        if (!task.isSuccessful()) {
-                            Log.w(TAG, "getInstanceId failed", task.getException());
-                            return;
-                        }
-
-                        String token = task.getResult().getToken();
-                        Log.d(TAG, token);
-
-                        Toast.makeText(MainActivity.this, token, Toast.LENGTH_SHORT).show();
-                    }
-                });
 
         //Subscribe to topic
         FirebaseMessaging.getInstance().subscribeToTopic("evacThesis")
