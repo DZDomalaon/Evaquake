@@ -6,7 +6,6 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 
 import androidx.viewpager.widget.PagerAdapter;
-import androidx.viewpager.widget.ViewPager;
 
 public class ImageAdapter extends PagerAdapter {
     Context mContext;
@@ -26,20 +25,20 @@ public class ImageAdapter extends PagerAdapter {
 
     @Override
     public boolean isViewFromObject(View v, Object obj) {
-        return v == ((ImageView) obj);
+        return v == obj;
     }
 
     @Override
     public Object instantiateItem(ViewGroup container, int i) {
         ImageView mImageView = new ImageView(mContext);
-        mImageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        mImageView.setScaleType(ImageView.ScaleType.FIT_XY);
         mImageView.setImageResource(sliderImagesId[i]);
-        ((ViewPager) container).addView(mImageView, 0);
+        container.addView(mImageView, 0);
         return mImageView;
     }
 
     @Override
     public void destroyItem(ViewGroup container, int i, Object obj) {
-        ((ViewPager) container).removeView((ImageView) obj);
+        container.removeView((ImageView) obj);
     }
 }

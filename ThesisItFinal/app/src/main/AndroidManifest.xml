@@ -16,7 +16,6 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:ignore="GoogleAppIndexingWarning">
-        <activity android:name=".Transpo"></activity>
 
         <service
             android:name=".MyFirebaseMessagingService"
@@ -27,9 +26,7 @@
         </service>
 
         <activity android:name=".map" />
-        <activity android:name=".test" />
         <activity android:name=".GuideActivity" />
-        <activity android:name=".InfoActivity" />
         <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

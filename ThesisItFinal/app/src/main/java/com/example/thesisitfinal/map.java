@@ -25,8 +25,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.mapbox.android.core.permissions.PermissionsListener;
 import com.mapbox.android.core.permissions.PermissionsManager;
-import com.mapbox.api.directions.v5.DirectionsCriteria;
-import com.mapbox.api.directions.v5.MapboxDirections;
 import com.mapbox.api.directions.v5.models.DirectionsResponse;
 import com.mapbox.api.directions.v5.models.DirectionsRoute;
 import com.mapbox.geojson.Feature;
@@ -49,6 +47,10 @@ import com.mapbox.mapboxsdk.plugins.traffic.TrafficPlugin;
 import com.mapbox.mapboxsdk.style.layers.LineLayer;
 import com.mapbox.mapboxsdk.style.layers.SymbolLayer;
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource;
+import com.mapbox.services.android.navigation.ui.v5.NavigationLauncher;
+import com.mapbox.services.android.navigation.ui.v5.NavigationLauncherOptions;
+import com.mapbox.services.android.navigation.ui.v5.route.NavigationMapRoute;
+import com.mapbox.services.android.navigation.v5.navigation.NavigationRoute;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -90,6 +92,7 @@ public class map extends AppCompatActivity implements
     private MapboxMap mapboxMap;
     private MapView mapView;
     private LocationComponent locationComponent;
+    private NavigationMapRoute navigationMapRoute;
     private DirectionsRoute currentRoute;
     private static final String MARKER_SOURCE = "markers-source";
     private static final String MARKER_STYLE_LAYER = "markers-style-layer";
@@ -102,7 +105,6 @@ public class map extends AppCompatActivity implements
     private URL url;
     private HttpURLConnection httpURLConnection;
     private String data = "";
-    private String criteria = Transpo.modeofTranspo;
     private Double lat;
     private Double lon;
     private LatLng[] possibleLocations;
@@ -115,7 +117,9 @@ public class map extends AppCompatActivity implements
 
     Toolbar toolbar;
     FloatingActionButton btnTraffic;
+    FloatingActionButton btnNav;
     TrafficPlugin trafficPlugin;
+
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
@@ -242,6 +246,20 @@ public class map extends AppCompatActivity implements
                                 }
                             }
                         });
+
+                        btnNav = findViewById(R.id.navigationBtn);
+                        btnNav.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                boolean simulate = false;
+                                NavigationLauncherOptions option = NavigationLauncherOptions.builder()
+                                        .directionsRoute(currentRoute)
+                                        .shouldSimulateRoute(simulate)
+                                        .build();
+                                NavigationLauncher.startNavigation(map.this,option);
+                            }
+                        });
+
                         getNearest();
                     }
                 });
@@ -289,6 +307,39 @@ public class map extends AppCompatActivity implements
 
     public void getRoute(Point destination)
     {
+        NavigationRoute.builder(this)
+                .accessToken(getString(R.string.access_token))
+                .origin(originPoint)
+                .destination(destination)
+                .build()
+                .getRoute(new Callback<DirectionsResponse>() {
+                    @Override
+                    public void onResponse(Call<DirectionsResponse> call, Response<DirectionsResponse> response) {
+                        if (response.body() == null) {
+                            Timber.e("No routes found, make sure you set hte right user and access token");
+                        } else if (response.body().routes().size() < 1) {
+                            Timber.e("No routes found");
+                        }
+                        currentRoute = response.body().routes().get(0);
+
+                        if(navigationMapRoute != null)
+                        {
+                            navigationMapRoute.removeRoute();
+                        }
+                        else
+                        {
+                            navigationMapRoute = new NavigationMapRoute(null,mapView, mapboxMap,
+                                    R.style.NavigationMapRoute);
+                        }
+                        navigationMapRoute.addRoute(currentRoute);
+                    }
+
+                    @Override
+                    public void onFailure(Call<DirectionsResponse> call, Throwable t) {
+
+                    }
+                });
+        /*
         MapboxDirections client = MapboxDirections.builder()
                 .origin(originPoint)
                 .destination(destination)
@@ -313,6 +364,8 @@ public class map extends AppCompatActivity implements
                 Timber.e("Error: " + t.getMessage());
             }
         });
+
+         */
     }
 
     public void initDestinationLocation()
@@ -397,8 +450,11 @@ public class map extends AppCompatActivity implements
             }
         }
 
-        getRoute((Point) features.get(indexOfNearest).geometry());
-        recyclerView.smoothScrollToPosition(indexOfNearest);
+        try {
+            getRoute((Point) features.get(indexOfNearest).geometry());
+            recyclerView.smoothScrollToPosition(indexOfNearest);
+        } catch (Exception e) {}
+
     }
 
     public void drawPolyline(final DirectionsRoute route)
@@ -555,11 +611,9 @@ public class map extends AppCompatActivity implements
     }
 
     @SuppressLint("StaticFieldLeak")
-    class backgroundTask extends AsyncTask<Void, Void, String>
-    {
+    class backgroundTask extends AsyncTask<Void, Void, String> {
         @Override
-        protected void onPreExecute()
-        {
+        protected void onPreExecute() {
             progressDialog = new ProgressDialog(map.this);
             progressDialog.setMessage("Please Wait");
             progressDialog.setCancelable(false);
@@ -567,34 +621,28 @@ public class map extends AppCompatActivity implements
         }
 
         @Override
-        protected String doInBackground(Void... voids)
-        {
-            try
-            {
+        protected String doInBackground(Void... voids) {
+            try {
                 url = new URL("https://evacuationcenter.000webhostapp.com/getData.php");
             }
-            catch (MalformedURLException e)
-            {
+            catch (MalformedURLException e) {
                 e.printStackTrace();
             }
 
-            try
-            {
+            try {
                 httpURLConnection = (HttpURLConnection) url.openConnection();
                 httpURLConnection.setRequestMethod("GET");
                 httpURLConnection.setReadTimeout(15000);
                 httpURLConnection.setConnectTimeout(15000);
                 httpURLConnection.connect();
             }
-            catch (IOException e)
-            {
+            catch (IOException e) {
                 e.printStackTrace();
             }
 
-            try
-            {
-                InputStream inputStream = httpURLConnection.getInputStream(); // <--- read the data from the connection
-                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream)); // <-- read the data from the stream
+            try {
+                InputStream inputStream = httpURLConnection.getInputStream();
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
                 StringBuilder stringBuilder = new StringBuilder();
 
                 String readLine = "";
