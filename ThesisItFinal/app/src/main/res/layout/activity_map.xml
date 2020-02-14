@@ -35,7 +35,7 @@
             android:layout_gravity="bottom|right"
             android:layout_marginRight="10dp"
             android:layout_marginBottom="180dp"
-            android:src="@drawable/ic_cursor" />
+            android:src="@drawable/ic_route" />
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/trafficBtn"
