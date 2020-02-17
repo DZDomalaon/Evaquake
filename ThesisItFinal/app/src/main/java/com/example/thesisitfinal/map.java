@@ -25,6 +25,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.mapbox.android.core.permissions.PermissionsListener;
 import com.mapbox.android.core.permissions.PermissionsManager;
+import com.mapbox.api.directions.v5.DirectionsCriteria;
 import com.mapbox.api.directions.v5.models.DirectionsResponse;
 import com.mapbox.api.directions.v5.models.DirectionsRoute;
 import com.mapbox.geojson.Feature;
@@ -251,7 +252,7 @@ public class map extends AppCompatActivity implements
                         btnNav.setOnClickListener(new View.OnClickListener() {
                             @Override
                             public void onClick(View v) {
-                                boolean simulate = false;
+                                boolean simulate = true;
                                 NavigationLauncherOptions option = NavigationLauncherOptions.builder()
                                         .directionsRoute(currentRoute)
                                         .shouldSimulateRoute(simulate)
@@ -310,6 +311,7 @@ public class map extends AppCompatActivity implements
         NavigationRoute.builder(this)
                 .accessToken(getString(R.string.access_token))
                 .origin(originPoint)
+                .profile(DirectionsCriteria.PROFILE_WALKING)
                 .destination(destination)
                 .build()
                 .getRoute(new Callback<DirectionsResponse>() {

@@ -13,6 +13,7 @@
         android:layout_height="match_parent"
         android:background="@color/colorAccent"
         android:gravity="bottom|center_horizontal"
+        android:backgroundTint="@color/blueMap"
         android:orientation="vertical"
         android:padding="20dp">
 
@@ -20,7 +21,8 @@
             android:id="@+id/evacName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@android:color/black"
+            android:textColor="@android:color/white"
+            android:textStyle="bold"
             android:textSize="20sp"
             tools:text="Sanraku" />
 

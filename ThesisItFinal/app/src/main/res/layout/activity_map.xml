@@ -35,7 +35,9 @@
             android:layout_gravity="bottom|right"
             android:layout_marginRight="10dp"
             android:layout_marginBottom="180dp"
-            android:src="@drawable/ic_cursor" />
+            android:backgroundTint="@color/mapboxBlue"
+            android:src="@drawable/ic_navigation2" />
+
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/trafficBtn"
@@ -44,7 +46,7 @@
             android:layout_gravity="bottom|right"
             android:layout_marginRight="10dp"
             android:layout_marginBottom="110dp"
-            android:src="@drawable/ic_traffic" />
+            android:src="@drawable/ic_traffic2" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rv_on_top_of_map"
