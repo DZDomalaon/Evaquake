@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ThesisItFinal</string>
+    <string name="app_name">EvaQuate</string>
     <string name="access_token" translatable="false">pk.eyJ1IjoiZGFyZWxseiIsImEiOiJjazJ6amp0cnUwZzVsM2htbWE5aGJ0NzMwIn0.2HGz_P09ejrXwO5c51XRNg</string>
     <string name="map">MAP</string>
     <string name="safety_guide">SAFETY GUIDE</string>
